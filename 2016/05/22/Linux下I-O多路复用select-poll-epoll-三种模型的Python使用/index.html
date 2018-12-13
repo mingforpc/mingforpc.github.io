@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="select, poll, epoll本质上都是同步的I/O，因为它们都是在读写事件就绪后自己负责进行读写，这个读写的过程是阻塞的。 select, poll, epoll 都是一种 I/O 复用的机制。它们都是通过一种机制（由系统提供的）来监视多个描述符，一旦某个描述符就绪了，就能通知程序进行相应的读写操作。 selectselect的原理select 是通过系统调用来监视着一个由多个文件描述符">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux下I&#x2F;O多路复用select, poll, epoll 三种模型的Python使用">
+<meta property="og:url" content="http://yoursite.com/2016/05/22/Linux下I-O多路复用select-poll-epoll-三种模型的Python使用/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="select, poll, epoll本质上都是同步的I/O，因为它们都是在读写事件就绪后自己负责进行读写，这个读写的过程是阻塞的。 select, poll, epoll 都是一种 I/O 复用的机制。它们都是通过一种机制（由系统提供的）来监视多个描述符，一旦某个描述符就绪了，就能通知程序进行相应的读写操作。 selectselect的原理select 是通过系统调用来监视着一个由多个文件描述符">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2018-12-13T12:29:07.070Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Linux下I&#x2F;O多路复用select, poll, epoll 三种模型的Python使用">
+<meta name="twitter:description" content="select, poll, epoll本质上都是同步的I/O，因为它们都是在读写事件就绪后自己负责进行读写，这个读写的过程是阻塞的。 select, poll, epoll 都是一种 I/O 复用的机制。它们都是通过一种机制（由系统提供的）来监视多个描述符，一旦某个描述符就绪了，就能通知程序进行相应的读写操作。 selectselect的原理select 是通过系统调用来监视着一个由多个文件描述符">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2016/05/22/Linux下I-O多路复用select-poll-epoll-三种模型的Python使用/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Linux下I/O多路复用select, poll, epoll 三种模型的Python使用 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2016/05/22/Linux下I-O多路复用select-poll-epoll-三种模型的Python使用/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Linux下I/O多路复用select, poll, epoll 三种模型的Python使用
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2016-05-22 23:32:00" itemprop="dateCreated datePublished" datetime="2016-05-22T23:32:00+08:00">2016-05-22</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 20:29:07" itemprop="dateModified" datetime="2018-12-13T20:29:07+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/系统/" itemprop="url" rel="index"><span itemprop="name">系统</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>select, poll, epoll<strong>本质上都是同步的I/O</strong>，因为它们都是在读写事件就绪后自己负责进行读写，这个读写的过程是阻塞的。</p>
+<p>select, poll, epoll 都是一种 I/O 复用的机制。它们都是通过一种机制（由系统提供的）来监视多个描述符，一旦某个描述符就绪了，就能通知程序进行相应的读写操作。</p>
+<h2 id="select"><a href="#select" class="headerlink" title="select"></a>select</h2><h3 id="select的原理"><a href="#select的原理" class="headerlink" title="select的原理"></a>select的原理</h3><p>select 是通过系统调用来监视着一个由多个文件描述符（file descriptor）组成的数组，当select()返回后，数组中就绪的文件描述符会被内核修改标记位(其实就是一个整数)，使得进程可以获得这些文件描述符从而进行后续的读写操作。select饰通过<strong>遍历</strong>来监视整个数组的，而且每次遍历都是<strong>线性</strong>的。</p>
+<h3 id="select的缺点"><a href="#select的缺点" class="headerlink" title="select的缺点"></a>select的缺点</h3><ol>
+<li>每次调用select，都需要把fd集合从用户态拷贝到内核态，这个开销在fd很多的时候会很大</li>
+<li>单个进程能够监视的fd数量存在最大限制，在linux上默认为1024（可以通过修改宏定义或者重新编译内核的方式提升这个限制）</li>
+<li>并且由于select的fd是放在数组中，并且每次都要线性遍历整个数组，当fd很多的时候，开销也很大</li>
+</ol>
+<h3 id="在Python中调用select"><a href="#在Python中调用select" class="headerlink" title="在Python中调用select"></a>在Python中调用select</h3><p>Python中，select，poll，epoll和unix的kqueue()都在模块<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">调用select的函数为```select.select(rlist, wlist, xlist[, timeout])```，前三个参数都分别是三个数组，数组中的对象均为```waitable object```:均是整数的文件描述符（file descriptor）或者一个拥有返回文件描述符方法```fileno()```的对象；</span><br><span class="line"></span><br><span class="line">* ```rlist```: 等待读就绪的list</span><br><span class="line">* ```wlist```: 等待写就绪的list</span><br><span class="line">* ```xlist```: 等待“异常”的list</span><br><span class="line"></span><br><span class="line">这三个list可以是一个空的list，但是接收3个空的list是依赖于系统的(在Linux上是可以接受的，但是在window上是不可以的)。</span><br><span class="line"></span><br><span class="line">```timeout```参数是接受一个 ```float``` 的数字，单位是**秒**。当缺省```timeout```时，select会一直阻塞之道至少有一个文件描述符(fd)准备就绪。如果```timeout```设为0时，则select不会阻塞。</span><br><span class="line"></span><br><span class="line">函数的返回值是返回三个准备就绪的list: 对应者```rlist```, ```wlist```, ```xlist```这三个list的子集。如果timeout，会返回3个空的list。</span><br><span class="line"></span><br><span class="line">在list中可以接受Ptython的的```file```对象(比如```sys.stdin```，或者会被```open()```和```os.open()```返回的object)，socket object将会返回```socket.socket()```。也可以自定义类，只要有一个合适的```fileno()```的方法(需要真实返回一个文件描述符，而不是一个随机的整数)。</span><br><span class="line"></span><br><span class="line">### Python的简单示例</span><br><span class="line">```python</span><br><span class="line">#!/usr/bin/env python</span><br><span class="line"># -*- coding: utf-8 -*-</span><br><span class="line"></span><br><span class="line">import select, socket</span><br><span class="line"></span><br><span class="line">response = b&quot;hello world&quot;</span><br><span class="line"></span><br><span class="line">#创建一个server socket</span><br><span class="line">serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)</span><br><span class="line">serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)</span><br><span class="line">serversocket.bind((&apos;localhost&apos;, 8080))</span><br><span class="line">serversocket.listen(1)</span><br><span class="line">serversocket.setblocking(0)</span><br><span class="line"></span><br><span class="line">inputs = [serversocket, ]</span><br><span class="line"></span><br><span class="line">while True:</span><br><span class="line">    rlist, wlist, xlist = select.select(inputs, [], [])</span><br><span class="line">    for sock in rlist:</span><br><span class="line">        ＃ server socket读就绪</span><br><span class="line">        if sock == serversocket:</span><br><span class="line">            con, addr = serversocket.accept()</span><br><span class="line">            ＃将这个connection添加到读就绪中</span><br><span class="line">            inputs.append(con)</span><br><span class="line">        else:</span><br><span class="line">            data = sock.recv(1024)</span><br><span class="line">            if data:</span><br><span class="line">                sock.send(response)</span><br><span class="line">                ＃从读就绪的list中删除</span><br><span class="line">                inputs.remove(sock)</span><br><span class="line">                sock.close()</span><br></pre></td></tr></table></figure></p>
+<h2 id="poll"><a href="#poll" class="headerlink" title="poll"></a>poll</h2><h3 id="poll的原理"><a href="#poll的原理" class="headerlink" title="poll的原理"></a>poll的原理</h3><p>poll本质上和select没有区别，只是没有了最大连接数(linux上默认1024个)的限制，原因是它基于链表存储的。</p>
+<h3 id="poll的缺点"><a href="#poll的缺点" class="headerlink" title="poll的缺点"></a>poll的缺点</h3><p>poll除了没有了最大连接数的缺点，其他都和select一样</p>
+<h3 id="在Python中调用poll"><a href="#在Python中调用poll" class="headerlink" title="在Python中调用poll"></a>在Python中调用poll</h3><ul>
+<li><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">* ```poll.register(fd[, eventmask])```注册一个文件描述符，注册后，可以通过```poll()```方法来检查是否有对应的I/O事件发生。```fd```可以是i 个整数，或者有返回整数的```fileno()```方法对象。如果File对象实现了fileno()，也可以当作参数使用。</span><br><span class="line"></span><br><span class="line">* ```eventmask```是一个你想去检查的事件类型，它可以是常量```POLLIN```, ```POLLPRI```和    ```POLLOUT```的组合。如果缺省，默认会去检查所有的3种事件类型。</span><br><span class="line"></span><br><span class="line">事件常量  | 意义</span><br><span class="line">-------- | -------------</span><br><span class="line">POLLIN   | 有数据读取</span><br><span class="line">POLLPRT  | 有数据紧急读取</span><br><span class="line">POLLOUT  | 准备输出:输出不会阻塞</span><br><span class="line">POLLERR  | 某些错误情况出现</span><br><span class="line">POLLHUP  | 挂起</span><br><span class="line">POLLNVAL | 无效请求:描述无法打开</span><br><span class="line"></span><br><span class="line">* ```poll.modify(fd, eventmask)``` 修改一个已经存在的fd，和```poll.register(fd, eventmask)```有相同的作用。如果去尝试修改一个未经注册的fd，会引起一个```errno```为**ENOENT**的```IOError```。</span><br><span class="line">* ```poll.unregister(fd)```从poll对象中注销一个fd。尝试去注销一个未经注册的fd，会引起```KeyError```。</span><br><span class="line">* ```poll.poll([timeout])```去检测已经注册了的文件描述符。会返回一个**可能为空**的list，list中包含着```(fd, event)```这样的二元组。 ```fd```是文件描述符， ```event```是文件描述符对应的事件。如果返回的是一个空的list，则说明超时了且没有文件描述符有事件发生。```timeout```的单位是*milliseconds*，如果设置了```timeout```，系统将会等待对应的时间。如果```timeout```缺省或者是```None```，这个方法将会阻塞直到对应的poll对象有一个事件发生。</span><br><span class="line"></span><br><span class="line">### Python简单示例</span><br><span class="line"></span><br><span class="line">```python</span><br><span class="line">#!/usr/bin/env python</span><br><span class="line"># -*- coding: utf-8 -*-</span><br><span class="line"></span><br><span class="line">import select, socket</span><br><span class="line"></span><br><span class="line">response = b&quot;hello world&quot;</span><br><span class="line"></span><br><span class="line">serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)</span><br><span class="line">serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)</span><br><span class="line">serversocket.bind((&apos;192.168.199.197&apos;, 8080))</span><br><span class="line">serversocket.listen(1)</span><br><span class="line">serversocket.setblocking(0)</span><br><span class="line"></span><br><span class="line">#</span><br><span class="line">poll = select.poll()</span><br><span class="line">poll.register(serversocket.fileno(), select.POLLIN)</span><br><span class="line"></span><br><span class="line">connections = &#123;&#125;</span><br><span class="line">while True:</span><br><span class="line">    for fd, event in poll.poll():</span><br><span class="line">        if event == select.POLLIN:</span><br><span class="line">            if fd == serversocket.fileno():</span><br><span class="line">                con, addr = serversocket.accept()</span><br><span class="line">                poll.register(con.fileno(), select.POLLIN)</span><br><span class="line">                connections[con.fileno()] = con</span><br><span class="line">            else:</span><br><span class="line">                con = connections[fd]</span><br><span class="line">                data = con.recv(1024)</span><br><span class="line">                if data:</span><br><span class="line">                    poll.modify(con.fileno(), select.POLLOUT)</span><br><span class="line">        elif event == select.POLLOUT:</span><br><span class="line">            con = connections[fd]</span><br><span class="line">            con.send(response)</span><br><span class="line">            poll.unregister(con.fileno())</span><br><span class="line">            con.close()</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h2 id="epoll"><a href="#epoll" class="headerlink" title="epoll"></a>epoll</h2><h3 id="epoll的原理及改进"><a href="#epoll的原理及改进" class="headerlink" title="epoll的原理及改进"></a>epoll的原理及改进</h3><p>在linux2.6（准确来说是2.5.44）由内核直接支持的方法。epoll解决了select和poll的缺点。</p>
+<ul>
+<li>对于第一个缺点，epoll的解决方法是每次注册新的事件到epoll中，会把所有的fd拷贝进内核，而不是在等待的时候重复拷贝，保证了每个fd在整个过程中只会拷贝1次。</li>
+<li>对于第二个缺点，epoll没有这个限制，它所支持的fd上限是最大可以打开文件的数目，具体数目可以cat /proc/sys/fs/file-max查看，一般来说这个数目和系统内存关系比较大。</li>
+<li>对于第三个缺点，epoll的解决方法不像select和poll每次对所有fd进行遍历轮询所有fd集合，而是在注册新的事件时，为每个fd指定一个回调函数，当设备就绪的时候，调用这个回调函数，这个回调函数就会把就绪的fd加入一个就绪表中。（所以epoll实际只需要遍历就绪表）。</li>
+</ul>
+<p>epoll同时支持水平触发和边缘触发：</p>
+<ul>
+<li><strong>水平触发（level－triggered）</strong>：只要满足条件，就触发一个事件(只要有数据没有被获取，内核就不断通知你)。e.g:在水平触发模式下，重复调用<figure class="highlight plain"><figcaption><span>poll是水平触发, epoll默认水平触发)</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br></pre></td><td class="code"><pre><span class="line">* **边缘触发（edge－triggered）**：每当状态变化时，触发一个事件。e.g:在边沿触发模式中，epoll.poll()在读或者写event在socket上面发生后，将只会返回一次event。调用```epoll.poll()```的程序必须处理所有和这个event相关的数据，随后的```epoll.poll()```调用不会再有这个event的通知。</span><br><span class="line"></span><br><span class="line">### 在Python中调用epoll</span><br><span class="line">* ```select.epoll([sizehint=-1])```返回一个epoll对象。</span><br><span class="line"></span><br><span class="line">* eventmask</span><br><span class="line"></span><br><span class="line">事件常量     | 意义 </span><br><span class="line"> ------------ | ------</span><br><span class="line">EPOLLIN     | 读就绪</span><br><span class="line">EPOLLOUT    | 写就绪</span><br><span class="line">EPOLLPRI    | 有数据紧急读取</span><br><span class="line">EPOLLERR    | assoc. fd有错误情况发生</span><br><span class="line">EPOLLHUP    | assoc. fd发生挂起</span><br><span class="line">EPOLLRT     | 设置边缘触发(ET)（默认的是水平触发）</span><br><span class="line">EPOLLONESHOT| 设置为 one-short 行为，一个事件(event)被拉出后，对应的fd在内部被禁用</span><br><span class="line">EPOLLRDNORM | 和 EPOLLIN 相等</span><br><span class="line">EPOLLRDBAND | 优先读取的数据带(data band)</span><br><span class="line">EPOLLWRNORM | 和 EPOLLOUT 相等</span><br><span class="line">EPOLLWRBAND | 优先写的数据带(data band)</span><br><span class="line">EPOLLMSG    | 忽视</span><br><span class="line"></span><br><span class="line">* ```epoll.close()```关闭epoll对象的文件描述符。</span><br><span class="line">* ```epoll.fileno```返回control fd的文件描述符number。</span><br><span class="line">* ```epoll.fromfd(fd)```用给予的fd来创建一个epoll对象。</span><br><span class="line">* ```epoll.register(fd[, eventmask])```在epoll对象中注册一个文件描述符。（如果文件描述符已经存在，将会引起一个```IOError```）</span><br><span class="line">* ```epoll.modify(fd, eventmask)```修改一个已经注册的文件描述符。</span><br><span class="line">* ```epoll.unregister(fd)```注销一个文件描述符。</span><br><span class="line">* ```epoll.poll(timeout=-1[, maxevnets=-1])```等待事件，timeout(float)的单位是秒（second）。</span><br><span class="line"></span><br><span class="line">### Ptython示例</span><br><span class="line">epoll的示例就直接引用[这篇出名的blog](http://scotdoyle.com/python-epoll-howto.html)了</span><br><span class="line"></span><br><span class="line">```python</span><br><span class="line">import socket, select</span><br><span class="line"></span><br><span class="line">EOL1 = b&apos;\n\n&apos;</span><br><span class="line">EOL2 = b&apos;\n\r\n&apos;</span><br><span class="line">response  = b&apos;HTTP/1.0 200 OK\r\nDate: Mon, 1 Jan 1996 01:01:01 GMT\r\n&apos;</span><br><span class="line">response += b&apos;Content-Type: text/plain\r\nContent-Length: 13\r\n\r\n&apos;</span><br><span class="line">response += b&apos;Hello, world!&apos;</span><br><span class="line"></span><br><span class="line">serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)</span><br><span class="line">serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)</span><br><span class="line">serversocket.bind((&apos;0.0.0.0&apos;, 8080))</span><br><span class="line">serversocket.listen(1)</span><br><span class="line">serversocket.setblocking(0)</span><br><span class="line"></span><br><span class="line">epoll = select.epoll()</span><br><span class="line">epoll.register(serversocket.fileno(), select.EPOLLIN)</span><br><span class="line"></span><br><span class="line">try:</span><br><span class="line">   connections = &#123;&#125;; requests = &#123;&#125;; responses = &#123;&#125;</span><br><span class="line">   while True:</span><br><span class="line">      events = epoll.poll(1)</span><br><span class="line">      for fileno, event in events:</span><br><span class="line">         if fileno == serversocket.fileno():</span><br><span class="line">            connection, address = serversocket.accept()</span><br><span class="line">            connection.setblocking(0)</span><br><span class="line">            epoll.register(connection.fileno(), select.EPOLLIN)</span><br><span class="line">            connections[connection.fileno()] = connection</span><br><span class="line">            requests[connection.fileno()] = b&apos;&apos;</span><br><span class="line">            responses[connection.fileno()] = response</span><br><span class="line">         elif event &amp; select.EPOLLIN:</span><br><span class="line">            requests[fileno] += connections[fileno].recv(1024)</span><br><span class="line">            if EOL1 in requests[fileno] or EOL2 in requests[fileno]:</span><br><span class="line">               epoll.modify(fileno, select.EPOLLOUT)</span><br><span class="line">               print(&apos;-&apos;*40 + &apos;\n&apos; + requests[fileno].decode()[:-2])</span><br><span class="line">         elif event &amp; select.EPOLLOUT:</span><br><span class="line">            byteswritten = connections[fileno].send(responses[fileno])</span><br><span class="line">            responses[fileno] = responses[fileno][byteswritten:]</span><br><span class="line">            if len(responses[fileno]) == 0:</span><br><span class="line">               epoll.modify(fileno, 0)</span><br><span class="line">               connections[fileno].shutdown(socket.SHUT_RDWR)</span><br><span class="line">         elif event &amp; select.EPOLLHUP:</span><br><span class="line">            epoll.unregister(fileno)</span><br><span class="line">            connections[fileno].close()</span><br><span class="line">            del connections[fileno]</span><br><span class="line">finally:</span><br><span class="line">   epoll.unregister(serversocket.fileno())</span><br><span class="line">   epoll.close()</span><br><span class="line">   serversocket.close()</span><br></pre></td></tr></table></figure></li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2015/01/29/Vaadin-简单集合-GWT示例/" rel="next" title="Vaadin 简单集合 GWT示例">
+                <i class="fa fa-chevron-left"></i> Vaadin 简单集合 GWT示例
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2016/06/04/Python-Socket-编程/" rel="prev" title="Python Socket 编程">
+                Python Socket 编程 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#select"><span class="nav-number">1.</span> <span class="nav-text">select</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#select的原理"><span class="nav-number">1.1.</span> <span class="nav-text">select的原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#select的缺点"><span class="nav-number">1.2.</span> <span class="nav-text">select的缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#在Python中调用select"><span class="nav-number">1.3.</span> <span class="nav-text">在Python中调用select</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#poll"><span class="nav-number">2.</span> <span class="nav-text">poll</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#poll的原理"><span class="nav-number">2.1.</span> <span class="nav-text">poll的原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#poll的缺点"><span class="nav-number">2.2.</span> <span class="nav-text">poll的缺点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#在Python中调用poll"><span class="nav-number">2.3.</span> <span class="nav-text">在Python中调用poll</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#epoll"><span class="nav-number">3.</span> <span class="nav-text">epoll</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#epoll的原理及改进"><span class="nav-number">3.1.</span> <span class="nav-text">epoll的原理及改进</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

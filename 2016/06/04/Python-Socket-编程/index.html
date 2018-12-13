@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="Socket创建函数 socket.socket(socket_family, socket_type, protocol=0)创建一个socket对象。socket_family是选择地址族（所以都是AF_开头），是不同的域（domain）。域决定者通信的特征，包括地址格式。参数socket_type是确定套接字的类型，进一步确定通信特征。protocol通常是0，表示为给定的域和套接字类型选择">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Python Socket 编程">
+<meta property="og:url" content="http://yoursite.com/2016/06/04/Python-Socket-编程/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="Socket创建函数 socket.socket(socket_family, socket_type, protocol=0)创建一个socket对象。socket_family是选择地址族（所以都是AF_开头），是不同的域（domain）。域决定者通信的特征，包括地址格式。参数socket_type是确定套接字的类型，进一步确定通信特征。protocol通常是0，表示为给定的域和套接字类型选择">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/2016/06/04/Python-Socket-编程/big_side.png">
+<meta property="og:image" content="http://yoursite.com/2016/06/04/Python-Socket-编程/small_side.png">
+<meta property="og:updated_time" content="2018-12-13T13:49:06.313Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Python Socket 编程">
+<meta name="twitter:description" content="Socket创建函数 socket.socket(socket_family, socket_type, protocol=0)创建一个socket对象。socket_family是选择地址族（所以都是AF_开头），是不同的域（domain）。域决定者通信的特征，包括地址格式。参数socket_type是确定套接字的类型，进一步确定通信特征。protocol通常是0，表示为给定的域和套接字类型选择">
+<meta name="twitter:image" content="http://yoursite.com/2016/06/04/Python-Socket-编程/big_side.png">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2016/06/04/Python-Socket-编程/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Python Socket 编程 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2016/06/04/Python-Socket-编程/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Python Socket 编程
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2016-06-04 23:50:00" itemprop="dateCreated datePublished" datetime="2016-06-04T23:50:00+08:00">2016-06-04</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 21:49:06" itemprop="dateModified" datetime="2018-12-13T21:49:06+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Python/" itemprop="url" rel="index"><span itemprop="name">Python</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="Socket创建函数"><a href="#Socket创建函数" class="headerlink" title="Socket创建函数"></a>Socket创建函数</h3><ul>
+<li><code>socket.socket(socket_family, socket_type, protocol=0)</code>创建一个socket对象。<code>socket_family</code>是选择地址族（所以都是AF_开头），是不同的域（domain）。域决定者通信的特征，包括地址格式。参数<code>socket_type</code>是确定套接字的类型，进一步确定通信特征。<code>protocol</code>通常是0，表示为给定的域和套接字类型选择默认协议。当对同一域和套接字类型支持多个协议时，可以使用protocol选择一个特定的协议。在AF_INET通信域中，套接字类型SOCK_STREAM的默认协议时传输控制协议（Transmission Control Protocol， TCP）。在AF_INET通信域中，套接字类型SOCK_DGRAM的默认协议是UDP.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>socket_family（address family，地址族）</th>
+<th>意义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>  socket.AF_UNIX</td>
+<td>UNIX域（只能够用于单一的Unix系统进程间通信），地址由单独一个string表示</td>
+</tr>
+<tr>
+<td>  socket.AF_INET</td>
+<td>IPv4因特网域 (服务器之间网络通信)，地址由<code>(host, port)</code>表示</td>
+</tr>
+<tr>
+<td>  socket.AF_INET6</td>
+<td>IPv6因特网域，地址由<code>(host, port, flowinfo, scopeid)</code>表示</td>
+</tr>
+<tr>
+<td>  socket.AF_UNSPEC</td>
+<td>未指定协议</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>socket_type</th>
+<th>意义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>  socket.SOCK_STREAM</td>
+<td>有序的，可靠的，双向的，面向连接的字节流（默认TCP协议）</td>
+</tr>
+<tr>
+<td>  socket.SOCK_DGRAM</td>
+<td>固定长度的，无连接的，不可开的报文传递</td>
+</tr>
+<tr>
+<td>  socket.SOCK_RAW</td>
+<td>IP协议的数据报接口</td>
+</tr>
+<tr>
+<td>  socket.SOCK_SEQPACKET</td>
+<td>固定长度的，有序的，可靠的，面向连接的报文传递</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>protocol</th>
+<th>意义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>  IPPROTO_IP</td>
+<td>IPv4协议</td>
+</tr>
+<tr>
+<td>  IPPROTO_IPV6</td>
+<td>IPv6协议</td>
+</tr>
+<tr>
+<td>  IPPROTO_ICMP</td>
+<td>因特网控制报文协议（Internet Control Message Protocol）</td>
+</tr>
+<tr>
+<td>  IPPROTO_RAW</td>
+<td>原始IP数据包协议</td>
+</tr>
+<tr>
+<td>  IPPROTO_TCP</td>
+<td>传输控制协议</td>
+</tr>
+<tr>
+<td>  IPPROTO_UDP</td>
+<td>用户数据报协议</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>对于SOCK_DGRAM（数据报）接口，两个对等进程之间同你不需要逻辑连接。只需要向对等进程所使用的套接字送出一个报文。因此SOCK_DGRAM提供了一个无连接的服务。</li>
+<li>对于SOCK_STREAM（字节流）接口，要求在交换数据之前，在本地套接字和通信的对等进程的套接字之间建立一个逻辑连接。由于SOCK_TREAM套接字提供字节流服务，所以应用程序分辨不出报文的界限。这意味者从SOCK_STREAM套接字读取数据时，它也许不会返回所有由发送进程所写的字节数。最终可以获得发送过来的所有数据，但也需要通过若干次函数调用才能得到。</li>
+<li>SOCK_SEQPACKET套接字和SOCK_STREAM套接字很类似，只是从套接字得到的是基于报文的服务而不是字节流的服务。这意味着从SOCK_SEQPACKET套接字接受的数据量与对方发送的一致。流控制传输协议（Stream Control Transmission Protocol， SCTP）提供了因特网上的顺序数据包服务。</li>
+<li>SOCK_RAW套接字提供一个数据报接口，用于直接访问下面的网络层（IP层）。使用这个接口的时候，应用程序负责构造自己的协议头部。PS：需要有超级管理员权限，防止恶意应用程序绕过内建安全机制来创建报文。</li>
+</ul>
+<h4 id="其他创建socket函数"><a href="#其他创建socket函数" class="headerlink" title="其他创建socket函数"></a>其他创建socket函数</h4><ul>
+<li><code>socket.socketpair([family[, type[, proto]]])</code>创建一对已经连接的socket对象（返回<code>(socket, socket)</code>），<code>family</code>，<code>type</code>，<code>proto</code>和上述<code>socket()</code>一样。部分平台默认的<code>family</code>是AF_UNIX，否则，默认是AF_INET。例如：AF_UNIX</li>
+<li><code>socket.fromfd(fd, family, type[, proto])</code>复制文件描述符<code>fd</code>（文件描述符fd是一个整数且有一个文件对象的<code>fileno()</code>方法返回）且用此返回一个socket对象。<code>family</code>，<code>type</code>和<code>proto</code>和上述<code>socket()</code>一样。文件描述符<code>fd</code>应该是制定一个socket的，但函数并没有检测，如果这个文件描述符<code>fd</code>是无效的，随后的操作将会失败。这个方法很少会用到，但是能够用来在一个被当作标准输入输出的程序的socket中设置或获取配置（如：一个由Unix inet daemon启动的服务）。socket被假设为阻塞模式。（在Unix上有效）</li>
+</ul>
+<h4 id="其他函数"><a href="#其他函数" class="headerlink" title="其他函数"></a>其他函数</h4><ul>
+<li><code>socket.getdefaulttimeout()</code>返回下一个新的socket对象的超时时间，单位是秒（float）。如果返回是<code>None</code>表示新的socket对象没有超时。第一次导入socket包时，默认是<code>None</code>。</li>
+<li><code>socket.setdefaulttimeout(timeout)</code>设置默认超时时间给新的socket对象，单位是秒(float)。<code>None</code>表示新的socket对象没有超时。第一次导入socket包时，默认是<code>None</code>。</li>
+</ul>
+<h2 id="地址"><a href="#地址" class="headerlink" title="地址"></a>地址</h2><h3 id="字节序"><a href="#字节序" class="headerlink" title="字节序"></a>字节序</h3><p><em>字节序</em>是一个处理器架构特性，用于指示像整数这样的大数据类型内部的字节如何排序。</p>
+<p><strong>大端</strong>(bing-endian)字节序，最大字节地址出现在最低有效字节(Least Significant Byte, LSB)上。</p>
+<p><strong>小端</strong>(little-endian)字节序，最低有效字节包含最小字节地址。</p>
+<p>不管字节如何排序，最高有效字节(Most Signification Byte, MSB)总是在左边，LSB总是在右边。</p>
+<p><img src="/2016/06/04/Python-Socket-编程/big_side.png" alt="大端"><br><img src="/2016/06/04/Python-Socket-编程/small_side.png" alt="小端"></p>
+<p>对于TCP/IP协议栈使用<strong>大端</strong>字节序。</p>
+<p>有下面四个函数来转换字节序：</p>
+<ul>
+<li><code>socket.ntohl(x)</code>：将32位正整数从<strong>网络字节序</strong>转换到<strong>主机字节序</strong>。在一些机器上的主机字节序和网络字节序是一样的，这将是一个空操作;否则，它执行一个4字节交换操作。</li>
+<li><code>socket.ntohs(x)</code>：将16位正整数从<strong>网络字节序</strong>转换到<strong>主机字节序</strong>。在一些机器上的主机字节序和网络字节序是一样的，这将是一个空操作;否则，它执行一个2字节交换操作。</li>
+<li><code>socket.htonl(x)</code>：将32位正整数从<strong>主机字节序</strong>转换到<strong>网络字节序</strong>。在一些机器上的主机字节序和网络字节序是一样的，这将是一个空操作;否则，它执行一个4字节交换操作。</li>
+<li><code>socket.htons(x)</code>：将16位正整数从<strong>主机字节序</strong>转换到<strong>网络字节序</strong>。在一些机器上的主机字节序和网络字节序是一样的，这将是一个空操作;否则，它执行一个2字节交换操作。</li>
+</ul>
+<h3 id="地址格式"><a href="#地址格式" class="headerlink" title="地址格式"></a>地址格式</h3><ul>
+<li><code>socket.inet_aton(ip_string)</code>将一个字符串的IPv4地址（e.g:“192.168.1.1”）转换为32位二进制格式的字符串（在和一些采用C标准库和需要<code>struct in_addr</code>的程序交流上很有用）。如果<code>ip_string</code>是一个无效的ip，这将引起一个<code>socket.error</code>。</li>
+<li><code>socket.inet_ntoa(packed_ip)</code>将一个32位二进制格式的字符串IPv4地址转换成一个常用的IPv4字符串。如果这不是一个表示4byte长度的字符串，将引起一个<code>socket.error</code>。</li>
+<li><code>socket.inet_pton(address_family, ip_string)</code>将一个对应<code>family</code>（AF_INET 或 AF_INET6）的字符串地址，转换成对应的二进制格式。（在*nix上）</li>
+<li><code>socket.inet_ntop(address_family, packed_ip)</code>将一个二进制格式的IP地址，转换成对应地址族的字符串格式。（AF_INET 或 AF_INET6）</li>
+</ul>
+<h3 id="地址查询"><a href="#地址查询" class="headerlink" title="地址查询"></a>地址查询</h3><ul>
+<li><p><code>socket.getaddrinfo(host, port[, family[, socktype[, proto[, flags]]]])</code>根据给定的参数host/port，相应的转换成一个包含用于创建socket对象的五元组的list。</p>
+<ul>
+<li><code>host</code>可以是一个域名（e.g:”<a href="http://www.google.com&quot;），可以是一个IPv4或者IPv6地址的字符串，或则是```None```。" target="_blank" rel="noopener">www.google.com&quot;），可以是一个IPv4或者IPv6地址的字符串，或则是```None```。</a></li>
+<li><code>port</code>可以是一个协议名（e.g:”http”），可以是一个代表端口的数字，或者是<code>None</code> 。</li>
+<li><code>family</code>，<code>socketype</code>，<code>proto</code>，<code>flags</code>都是一些可选的参数，来筛选结果的。默认情况下，它们的值都是 <code>0</code>，表示所有。 <code>flags</code>可以是 1 个或者多个<code>AI_*</code>常量，这会影响结果是如何计算和返回的。默认值是 <code>0</code>。</li>
+</ul>
+<p>返回list的5元组结构：<code>(family, socktype, proto, canonname, sockaddr)</code>,<br><code>family</code>，<code>socktpye</code>，<code>proto</code>是一个整数。<code>canonname</code>是一个string，仅当<code>AI_CANONNAME</code>在参数<code>flags</code>中，否则返回 ‘’ 。如果<code>family</code>是<code>AF_INET</code>，<code>sockaddr</code>是<code>(address, port)</code>；如果<code>family</code>是<code>AF_INET6</code>，<code>sockaddr</code>是<code>(address, port, flow, info, scope id)</code>；</p>
+<p>flag标记         | 描述<br>————— | ——<br>AI_ADDRCONFIG   | 查询配置的地址类型(IPv4或IPv6)<br>AI_ALL          | 查找 IPv4 和 IPv6 地址(仅用于AI_V4MAPPED)<br>AI_CANONAME     | 需要一个规范的名字（与别名相对）<br>AI_NUMBERICHOST | 以数字格式指定主机地址，不翻译<br>AI_NUMBERICSERV | 将服务指定为数字端口号，不翻译<br>AI_PASSIVE      | 套接字地址用于监听绑定<br>AI_V4MAPPED     | 如果没有找到IPv6地址，返回映射到IPv6格式的IPv4地址</p>
+</li>
+<li><p><code>socket.gethostname()</code>返回当前正在执行Python解释器的主机名的字符串。（<code>gethostname()</code>返回的可能不是一个完全的qualified主机名，详见<code>getfqdn()</code>）</p>
+</li>
+<li><code>socket.getfqdn([name])</code>使用<code>name</code>来返回一个full qualified的主机名。如果<code>name</code>没有提供或者为空，则被解释为本地主机。为了找返回一个full qualified的主机名，由<code>gethostbyaddr()</code>返回的主机名将被选中，如果有的主机有别名的话，将会跟在后面。第一个返回的主机名是被选中的。如果没有full qualified主机名可用，将返回<code>gethostbyaddr()</code>的主机名。</li>
+<li><code>socket.gethostbyname(hostname)</code>将一个hostname转换为IPv4地址格式。如果<code>hostname</code>是一个IPv4地址，将会原封不动返回。<code>gethostbyname()</code>不接受IPv6。</li>
+<li><code>socket.gethostbyname_ex(hostname)</code>扩展接口。将一个hostname转换为IPv4地址格式。返回一个三元组<code>(hostname, aliaslist, ipaddrlist)</code>。<code>hostname</code>是反映着返回的<code>ip_address</code>。<code>aliaslist</code>是一组对应着同一个IP地址的主机别名（可能为空）。<code>ipaddrlist</code>是一组对应着同一个hostname的IPv4地址（一般情况是单一个地址）。<code>gethostbyname_ex()</code>只支持IPv4。</li>
+<li><code>socket.gethostbyaddr(ip_address)```</code>hostname<code>是反映着返回的</code>ip_address<code>。</code>aliaslist<code>是一组对应着同一个IP地址的主机别名（可能为空）。</code>ipaddrlist<code>`</code>是一组同一主机同一接口的IPv4/IPv6的地址列表。</li>
+<li><code>socket.getnameinfo(sockaddr, flags)</code>将给定的<code>socketaddr</code>(为一个host和port的二元组)翻译成一个二元组<code>(host, port)</code>。根据设置和<code>flags</code>，结果可以保存一个full qualified的主机名或者表现在主机上的数字地址。同样的，端口号可以为数字或者字符串。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>flags</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NI_DGRAM</td>
+<td>服务基于数据报而非基于流</td>
+</tr>
+<tr>
+<td>NI_NAMEREQD</td>
+<td>如果找不到主机名，将其作为一个错误对待</td>
+</tr>
+<tr>
+<td>NI_NOFQDN</td>
+<td>对于本地主机，仅返回全限定域名的字节点部分</td>
+</tr>
+<tr>
+<td>NI_NUMERICHOST</td>
+<td>返回主机地址的数字形式，而非主机名</td>
+</tr>
+<tr>
+<td>NI_NUMERICSCOPE</td>
+<td>对于IPv6，返回范围ID的数字形式，而非名字</td>
+</tr>
+<tr>
+<td>NI_NUMERICSERV</td>
+<td>返回服务地址的数字形式（即端口号），而非名字</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>socket.getprotobyname(protocolname)</code>将一个网络协议名（例如“icmp”,”tcp”）转换成为一个固定的合适的值，给<code>socket()</code>的第三个参数（可选）。这个通常用在<code>SOCK_RAW</code>模式，对于其他普通的socket模型，将这个参数缺省或者设为0会自动的选择正确的协议。</li>
+<li><code>socket.getservbyname(servicename[, protocolname])</code>将一个网络服务名（e.g: “http”）和协议名转换成一个该服务的端口号。<code>protocolname</code>是可选项，应该是<code>tcp</code>或者<code>udp</code>，否则将匹配任何协议。</li>
+<li><code>socket.getservbyport(port[, protocolname])</code>将一个端口号和网络协议名转换成该端口号的服务名。<code>protocolname</code>是可选项，应该是<code>tcp</code>或者<code>udp</code>，否则将匹配任何协议。</li>
+</ul>
+<h2 id="Socket对象方法"><a href="#Socket对象方法" class="headerlink" title="Socket对象方法"></a>Socket对象方法</h2><ul>
+<li><code>socket.accept()</code>接受一个连接。这个socket对象必须绑定了一个地址并正在监听着连接。返回的值是<code>(conn, address)</code>， <code>conn</code>是一个用来在接连上发送接收数据的新的socket对象，<code>address</code>是绑定在另外一个的socket连接的地址。</li>
+<li><code>socket.bind(address)</code>将socket绑定到一个<code>address</code>。这个socket必须是未绑定地址的（<code>address</code>的格式如上文提到的，e.g:IPv4的格式<code>(host, port)</code>）。</li>
+<li><code>socket.close()</code>关闭这个socket。接下来在这个socket对象的操作都将失败。另外一端将不在接收到数据（当队列中的数据都发送后）。当socket对象被垃圾回收机制回收时，将会自动关闭。</li>
+<li><code>socket.connect(address)</code>用<code>address</code>连接到一个远程的socket（<code>address</code>的格式如上文提到的，e.g:IPv4的格式<code>(host, port)</code>）</li>
+<li><code>socket.connect_ex(address)</code>类似于<code>socket.connect(address)</code>，但是返回一个错误提示来取代引起一个C语言层<code>connect()</code>的错误exception（其他问题，如果“host not found”，依然会引起exception）。如果返回的错误提示时<code>0</code>则操作成功，其他则是<code>errno</code>变量。这是一个有用的支持，比如，异步连接。</li>
+<li><code>socket.fileno()</code>返回一个socket对象的文件描述符（一个整数）。在做多路复用socket（<code>select</code>,<code>poll</code>,<code>epoll</code>）下有用。在Window下，这个方法返回的整数不能当做文件描述符来使用（比如<code>os.fdopen()</code>）。Unix下没有这个限制。</li>
+<li><code>socket.getpeername()</code>返回socket连接的远程<code>address</code>。这是有用的，例如找出远程的IPv4/v6 socket的端口号（返回的<code>address</code>格式依赖于地址族－如上述）。这个方法在某些平台上不支持。</li>
+<li><code>socket.getsockname()</code>返回socket绑定的<code>address</code>。这是有用的，例如找IPv4/v6 socket的端口号（返回的<code>address</code>格式依赖于地址族－如上述）。</li>
+<li><code>socket.getsockopt(level, optname[, buflen])</code>返回指定socket选项的值。<code>optname</code>所需要的 symbolic 常量（<code>so_＊</code>）都在本module中。如果<code>buflen</code>缺省，将会假定是一个整数的设置，并且这个函数是返回一个整数的。如果<code>buflen</code>设置了，它指定用于接收缓冲的最大长度。需要由调用者来对这个缓冲的内容进行解码。</li>
+<li><p><code>socket.setsockopt(level, optname, value)</code>设置给定socket选项的值。<code>optname</code>所需要的 symbolic 常量（<code>so_＊</code>）都在本module中。<code>value</code>可以是一个整数（integer）或者表示缓冲（buffer）的字符串（string）。在后一种情况（指字符串的情况），它是由调用者来保证字符串包含着正确的位（bits）。</p>
+<p>参数<code>level</code>标识了选项应用的协议。如果是通用的套接字层次选项，则<code>level</code>设置成<code>SOL_SOCKET</code>，否则<code>level</code>设置成控制这个选项的协议编号。对于TCP选项，<code>level</code>是<code>IPPROTO_TCP</code>。对于IP，<code>level</code>是<code>IPPROTO_IP</code>等等。</p>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>参数value的类型</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SO_ACCEPTCONN</td>
+<td>integer</td>
+<td>返回信息指示该套接字是否能被监听（仅<code>getsockopt()</code>）</td>
+</tr>
+<tr>
+<td>SO_BROADCAST</td>
+<td>integer</td>
+<td>如果value非0，广播数据包</td>
+</tr>
+<tr>
+<td>SO_DEBUG</td>
+<td>integer</td>
+<td>如果value非0，启动网络驱动调试功能</td>
+</tr>
+<tr>
+<td>SO_DONTROUTE</td>
+<td>integer</td>
+<td>如果返回的value非0，绕过通常路由</td>
+</tr>
+<tr>
+<td>SO_ERROR</td>
+<td>integer</td>
+<td>返回挂起的套接字错误并清除(仅<code>getsockopt</code>)</td>
+</tr>
+<tr>
+<td>SO_KEEPALIVE</td>
+<td>integer</td>
+<td>如果value非0，启动周期性keep－alive报文</td>
+</tr>
+<tr>
+<td>SO_LINGER</td>
+<td>stirng</td>
+<td>当还有未发送报文二套接字已关闭时，延迟时间</td>
+</tr>
+<tr>
+<td>SO_OOBINLINE</td>
+<td>integer</td>
+<td>当value非0，将带外数据放在普通数据中</td>
+</tr>
+<tr>
+<td>SO_RCVBUF</td>
+<td>integer</td>
+<td>接受缓冲区的字节长度</td>
+</tr>
+<tr>
+<td>SO_RCVLOWAT</td>
+<td>integer</td>
+<td>接收调用中返回的最小数据字节数</td>
+</tr>
+<tr>
+<td>SO_RCVTIMEO</td>
+<td>string</td>
+<td>套接字接收调用的超时值</td>
+</tr>
+<tr>
+<td>SO_REUSEADDR</td>
+<td>integer</td>
+<td>如果value非0，重用bind中的地址</td>
+</tr>
+<tr>
+<td>SO_SNDBUF</td>
+<td>integer</td>
+<td>发送缓冲区的字节长度</td>
+</tr>
+<tr>
+<td>SO_SNDLOWAT</td>
+<td>integer</td>
+<td>发送调用中传送的最小数据字节数</td>
+</tr>
+<tr>
+<td>SO_SNDTIMEO</td>
+<td>string</td>
+<td>套接字发送调用的超时值</td>
+</tr>
+<tr>
+<td>SO_TYPE</td>
+<td>integer</td>
+<td>表示套接字类型（仅<code>getsockopt</code>）</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>socket.listen(backlog)</code>监听Socket进行的连接。<code>backlog</code>指定连接队列的最大值，至少为0。最大值取决于系统（通常为5）。最小值被强制为0。</li>
+<li><p><code>socket.makefile([mode[, bufsize]])</code>返回与socket相关联的文件对象。这个文件对象只有调用<code>close()</code>方法才会被关闭，但这个关闭只是删除与socket的关联，所以只有在这个socket没有在其他地方被引用时，socket才会关闭。<br>这个socket必须在阻塞模式（不能有超时）。可选参数<code>mode</code>和<code>bufsize</code>和大开文件的方法<code>file()</code>，<a href="https://docs.python.org/2/library/functions.html#open" target="_blank" rel="noopener"><code>open</code></a>一样。</p>
+</li>
+<li><p><code>socket.recv(bufsize[, flags])</code>接收来自socket的数据。接收的数据以string类型表示。一次接收数据的最大数量由<code>bufsize</code>决定。<code>flags</code>的默认值为0，<code>flags</code>的标志如下表。</p>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>标志</th>
+<th>描述（Linux下）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MSG_CMSG_CLOEXEC</td>
+<td>为UNIX域套接字上接收的文件描述符设置执行时关闭标志</td>
+</tr>
+<tr>
+<td>MSG_DONTWAIT</td>
+<td>启动非阻塞操作（相当于使用O_NONBLOCK）</td>
+</tr>
+<tr>
+<td>MSG_ERRQUEUE</td>
+<td>接受错误信息作为辅助数据</td>
+</tr>
+<tr>
+<td>MSG_OOB</td>
+<td>如果协议支持，获取带外数据</td>
+</tr>
+<tr>
+<td>MSG_PEEK</td>
+<td>返回数据内容而不是真正取走数据</td>
+</tr>
+<tr>
+<td>MSG_TRUNC</td>
+<td>即使数据包被截断，也返回数据包的实际长度</td>
+</tr>
+<tr>
+<td>MSG_WAITALL</td>
+<td>等待直到所有数据可能（仅SOCK_STREAM）</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>socket.recvfrom(bufsize[, flags])</code>接收来自socket的数据。返回的值时一个二元组<code>(string, address)</code>，<code>string</code>表示的是接收的数据，<code>address</code>则是发送数据的socket的地址。参数的详解参见<code>socket.recv(bufsize[, flags])</code>。</li>
+<li><code>socket.recvfrom_into(buffer[, nbytes[, flags]])</code>接收来自socket的数据，将接收的数据写入到<code>buffer</code>中，而不是返回一个<code>string</code>。返回值的一个二元组<code>(nbytes, address)</code>,<code>nbytes</code>是接收的的字节数，<code>address</code>则是发送数据的socket的地址。<code>flags</code>参数的详解参见<code>socket.recv(bufsize[, flags])</code>。</li>
+<li><code>socket.send(string[, flags])</code>发送数据到socket。这个socket对象必须已经与一个远程的socket对象连接。可选参数<code>flags</code>和函数<code>recv()</code>中的一样。这个函数会返回发送数据的字节数。应用程序需要自己负责检查是否所有数据已经被发送，如果只有一部分数据发送了，应用程序需要尝试将剩余的数据输送出去。</li>
+<li><code>socket.sendall(string[, flags])</code>发送数据到socket。这个socket对象必须已经与一个远程的socket对象连接。可选参数<code>flags</code>和函数<code>recv()</code>中的一样。和<code>send()</code>不同的是，这个方法将会一直发送数据直到所有数据都发送完或者有错误出现。如果成功则返回<code>None</code>。如果错误，将会引起一个异常(exception)，但这样将没有办法获知有多少数据是成功被发送的。</li>
+<li><code>socket.sendto(string, address)</code>和<code>socket.sendto(string, flags, address)</code>发送数据到socket，这个socket必须是没有与远程的socket连接的，目标socket由<code>address</code>来决定。可选参数<code>falgs</code>与<code>recv()</code>相同。函数返回的结果是发送数据的字节数。（<code>address</code>的格式由地址族决定，看上文）</li>
+<li><code>socket.setblocking(flag)</code>将这个socket设置为<strong>阻塞</strong>或<strong>非阻塞</strong>：如果<code>flag</code>设为<code>0</code>，那个它是<strong>非阻塞</strong>，其他则为<strong>阻塞</strong>。所有的socket默认是<strong>阻塞</strong>的。在<strong><em>非阻塞</em></strong>模式下，如果调用<code>recv()</code>没有接收到数据，或者<code>send()</code>不能立刻的发送数据，一个<code>error</code>一个将会引起。在<strong>阻塞</strong>模式下，这些方法将会阻塞知道它们能够处理。<code>socket.setblocking(0)</code>的效果和<code>socket.setblocking(0.0)</code>一样。<code>socket.setblocking(1)</code>的效果和<code>socket.setblocking(None)</code>一样。</li>
+<li><code>socket.settimeout(value)</code>为阻塞的socket设置一个超时时间。<code>value</code>可以是一个非负float表示的数字，单位是秒，也可以是<code>None</code>。如果给socket设定一个超时时间（float），一连串的阻塞方法的处理时间超过这个值，将会引起一个<code>timeout</code>异常。如果<code>value</code>是<code>None</code>，则会禁用超时。<code>settimeout(0.0)</code>效果和<code>setblocking(0)</code>一样。<code>settimeout(None)</code>的效果和<code>setblocking(1)</code>一样。</li>
+<li><code>socket.gettimeout()</code>返回设置的超时时间。返回的值和<code>setblocking()</code>，<code>settimeout()</code>相关。</li>
+<li><code>socket.setsockopt(level, optname, value)</code>用给定的参数设置socket的配置。所需的配置常量在<code>socket</code>module中（<code>SO_*</code>etc.）。<code>value</code>可以是一个整数或者一个字符串表示的buffer。如果是一个buffer，将有调用着来验证字符串是否包含正确的位（bits）。</li>
+<li><code>socket.shutdown(how)</code>完全关闭连接或者关闭一半。如果<code>how</code>是 <code>SHUT_RD</code>，将不能接收数据。如果<code>how</code>是<code>SHUT_WR</code>，将不能发送数据。如果是SHUT_RDWD，发送和接收都不允许。</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2016/05/22/Linux下I-O多路复用select-poll-epoll-三种模型的Python使用/" rel="next" title="Linux下I/O多路复用select, poll, epoll 三种模型的Python使用">
+                <i class="fa fa-chevron-left"></i> Linux下I/O多路复用select, poll, epoll 三种模型的Python使用
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2016/06/10/HTTP-结构、状态码、首部简记/" rel="prev" title="HTTP 结构、状态码、首部简记">
+                HTTP 结构、状态码、首部简记 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Socket创建函数"><span class="nav-number">1.</span> <span class="nav-text">Socket创建函数</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#其他创建socket函数"><span class="nav-number">1.1.</span> <span class="nav-text">其他创建socket函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#其他函数"><span class="nav-number">1.2.</span> <span class="nav-text">其他函数</span></a></li></ol></li></ol><li class="nav-item nav-level-2"><a class="nav-link" href="#地址"><span class="nav-number"></span> <span class="nav-text">地址</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#字节序"><span class="nav-number">1.</span> <span class="nav-text">字节序</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#地址格式"><span class="nav-number">2.</span> <span class="nav-text">地址格式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#地址查询"><span class="nav-number">3.</span> <span class="nav-text">地址查询</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Socket对象方法"><span class="nav-number"></span> <span class="nav-text">Socket对象方法</span></a></li></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

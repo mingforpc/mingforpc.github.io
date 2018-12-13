@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="一直想看一下Flask是怎么做请求上下文管理的，直接使用 1from flask import request 就是当前的请求了。 简单看一个各个模块的代码： 12345# flask/__init__.py......from .global import current_app, g, request, session, _request_ctx_statck, _app_ctx_stack.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flask的请求上下文管理">
+<meta property="og:url" content="http://yoursite.com/2018/02/22/Flask的请求上下文管理/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="一直想看一下Flask是怎么做请求上下文管理的，直接使用 1from flask import request 就是当前的请求了。 简单看一个各个模块的代码： 12345# flask/__init__.py......from .global import current_app, g, request, session, _request_ctx_statck, _app_ctx_stack.">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2018-12-13T14:13:08.633Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Flask的请求上下文管理">
+<meta name="twitter:description" content="一直想看一下Flask是怎么做请求上下文管理的，直接使用 1from flask import request 就是当前的请求了。 简单看一个各个模块的代码： 12345# flask/__init__.py......from .global import current_app, g, request, session, _request_ctx_statck, _app_ctx_stack.">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/02/22/Flask的请求上下文管理/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Flask的请求上下文管理 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/02/22/Flask的请求上下文管理/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Flask的请求上下文管理
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-02-22 15:42:00" itemprop="dateCreated datePublished" datetime="2018-02-22T15:42:00+08:00">2018-02-22</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 22:13:08" itemprop="dateModified" datetime="2018-12-13T22:13:08+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Python/" itemprop="url" rel="index"><span itemprop="name">Python</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Python/Flask/" itemprop="url" rel="index"><span itemprop="name">Flask</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>一直想看一下Flask是怎么做请求上下文管理的，直接使用</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> flask <span class="keyword">import</span> request</span><br></pre></td></tr></table></figure>
+<p>就是当前的请求了。</p>
+<p>简单看一个各个模块的代码：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># flask/__init__.py</span></span><br><span class="line"></span><br><span class="line">......</span><br><span class="line"><span class="keyword">from</span> .<span class="keyword">global</span> <span class="keyword">import</span> current_app, g, request, session, _request_ctx_statck, _app_ctx_stack</span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+<p>可以看出，处理上下文的主要在<code>global.py</code></p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># flask/global.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> functools <span class="keyword">import</span> partial</span><br><span class="line"><span class="keyword">from</span> werkzeug.local <span class="keyword">import</span> LocalStack, LocalProxy</span><br><span class="line"></span><br><span class="line">......</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">_lookup_req_object</span><span class="params">(name)</span>:</span></span><br><span class="line">	<span class="comment"># 从request栈中获得栈顶的request</span></span><br><span class="line">	top = _request_ctx_stack.top</span><br><span class="line">	<span class="keyword">if</span> top <span class="keyword">is</span> <span class="keyword">None</span>:</span><br><span class="line">		<span class="keyword">raise</span> RuntimeError(request_ctx_err_msg)</span><br><span class="line">	<span class="keyword">return</span> getarrt(top, name)</span><br><span class="line"></span><br><span class="line">......</span><br><span class="line"></span><br><span class="line"><span class="comment"># 初始化存放request的栈</span></span><br><span class="line">_request_ctx_stack = LocalStack()</span><br><span class="line">request = LocalProxy(partial(_lookup_req_object, <span class="string">'request'</span>))</span><br><span class="line"></span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+<p>在这里可以看出，<code>request</code>应该就是通过<code>_lookup_req_object</code>函数来每次获取位于栈顶的<code>request</code>。它是通过在werkzeug的<code>LocalProxy</code>中获取栈顶的<code>request</code>然后执行相应的操作</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># werkzeug/local.py</span></span><br><span class="line"></span><br><span class="line">......</span><br><span class="line"></span><br><span class="line"><span class="meta">@implements_bool</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">LocalProxy</span><span class="params">(object)</span>:</span></span><br><span class="line"></span><br><span class="line">    __slots__ = (<span class="string">'__local'</span>, <span class="string">'__dict__'</span>, <span class="string">'__name__'</span>, <span class="string">'__wrapped__'</span>)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, local, name=None)</span>:</span></span><br><span class="line">    	 <span class="comment"># 一个私有属性 `__local`, 就是传进来的`_lookup_req_object`</span></span><br><span class="line">        object.__setattr__(self, <span class="string">'_LocalProxy__local'</span>, local)</span><br><span class="line">        object.__setattr__(self, <span class="string">'__name__'</span>, name)</span><br><span class="line">        <span class="keyword">if</span> callable(local) <span class="keyword">and</span> <span class="keyword">not</span> hasattr(local, <span class="string">'__release_local__'</span>):</span><br><span class="line">            <span class="comment"># "local" is a callable that is not an instance of Local or</span></span><br><span class="line">            <span class="comment"># LocalManager: mark it as a wrapped function.</span></span><br><span class="line">            object.__setattr__(self, <span class="string">'__wrapped__'</span>, local)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">_get_current_object</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="string">"""Return the current object.  This is useful if you want the real</span></span><br><span class="line"><span class="string">        object behind the proxy at a time for performance reasons or because</span></span><br><span class="line"><span class="string">        you want to pass the object into a different context.</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> hasattr(self.__local, <span class="string">'__release_local__'</span>):</span><br><span class="line">        	  <span class="comment"># 这里会调用`_lookup_req_object`获得栈顶的request</span></span><br><span class="line">            <span class="keyword">return</span> self.__local()</span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">return</span> getattr(self.__local, self.__name__)</span><br><span class="line">        <span class="keyword">except</span> AttributeError:</span><br><span class="line">            <span class="keyword">raise</span> RuntimeError(<span class="string">'no object bound to %s'</span> % self.__name__)</span><br><span class="line"></span><br><span class="line"><span class="meta">    @property</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__dict__</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">return</span> self._get_current_object().__dict__</span><br><span class="line">        <span class="keyword">except</span> RuntimeError:</span><br><span class="line">            <span class="keyword">raise</span> AttributeError(<span class="string">'__dict__'</span>)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__repr__</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            obj = self._get_current_object()</span><br><span class="line">        <span class="keyword">except</span> RuntimeError:</span><br><span class="line">            <span class="keyword">return</span> <span class="string">'&lt;%s unbound&gt;'</span> % self.__class__.__name__</span><br><span class="line">        <span class="keyword">return</span> repr(obj)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__bool__</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">return</span> bool(self._get_current_object())</span><br><span class="line">        <span class="keyword">except</span> RuntimeError:</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">False</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__unicode__</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">return</span> unicode(self._get_current_object())  <span class="comment"># noqa</span></span><br><span class="line">        <span class="keyword">except</span> RuntimeError:</span><br><span class="line">            <span class="keyword">return</span> repr(self)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__dir__</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">return</span> dir(self._get_current_object())</span><br><span class="line">        <span class="keyword">except</span> RuntimeError:</span><br><span class="line">            <span class="keyword">return</span> []</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__getattr__</span><span class="params">(self, name)</span>:</span></span><br><span class="line">        <span class="keyword">if</span> name == <span class="string">'__members__'</span>:</span><br><span class="line">            <span class="keyword">return</span> dir(self._get_current_object())</span><br><span class="line">        <span class="keyword">return</span> getattr(self._get_current_object(), name)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__setitem__</span><span class="params">(self, key, value)</span>:</span></span><br><span class="line">        self._get_current_object()[key] = value</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__delitem__</span><span class="params">(self, key)</span>:</span></span><br><span class="line">        <span class="keyword">del</span> self._get_current_object()[key]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> PY2:</span><br><span class="line">        __getslice__ = <span class="keyword">lambda</span> x, i, j: x._get_current_object()[i:j]</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">def</span> <span class="title">__setslice__</span><span class="params">(self, i, j, seq)</span>:</span></span><br><span class="line">            self._get_current_object()[i:j] = seq</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">def</span> <span class="title">__delslice__</span><span class="params">(self, i, j)</span>:</span></span><br><span class="line">            <span class="keyword">del</span> self._get_current_object()[i:j]</span><br><span class="line"></span><br><span class="line">    __setattr__ = <span class="keyword">lambda</span> x, n, v: setattr(x._get_current_object(), n, v)</span><br><span class="line">    __delattr__ = <span class="keyword">lambda</span> x, n: delattr(x._get_current_object(), n)</span><br><span class="line">    __str__ = <span class="keyword">lambda</span> x: str(x._get_current_object())</span><br><span class="line">    __lt__ = <span class="keyword">lambda</span> x, o: x._get_current_object() &lt; o</span><br><span class="line">    __le__ = <span class="keyword">lambda</span> x, o: x._get_current_object() &lt;= o</span><br><span class="line">    __eq__ = <span class="keyword">lambda</span> x, o: x._get_current_object() == o</span><br><span class="line">    __ne__ = <span class="keyword">lambda</span> x, o: x._get_current_object() != o</span><br><span class="line">    __gt__ = <span class="keyword">lambda</span> x, o: x._get_current_object() &gt; o</span><br><span class="line">    __ge__ = <span class="keyword">lambda</span> x, o: x._get_current_object() &gt;= o</span><br><span class="line">    __cmp__ = <span class="keyword">lambda</span> x, o: cmp(x._get_current_object(), o)  <span class="comment"># noqa</span></span><br><span class="line">    __hash__ = <span class="keyword">lambda</span> x: hash(x._get_current_object())</span><br><span class="line">    __call__ = <span class="keyword">lambda</span> x, *a, **kw: x._get_current_object()(*a, **kw)</span><br><span class="line">    __len__ = <span class="keyword">lambda</span> x: len(x._get_current_object())</span><br><span class="line">    __getitem__ = <span class="keyword">lambda</span> x, i: x._get_current_object()[i]</span><br><span class="line">    __iter__ = <span class="keyword">lambda</span> x: iter(x._get_current_object())</span><br><span class="line">    __contains__ = <span class="keyword">lambda</span> x, i: i <span class="keyword">in</span> x._get_current_object()</span><br><span class="line">    __add__ = <span class="keyword">lambda</span> x, o: x._get_current_object() + o</span><br><span class="line">    __sub__ = <span class="keyword">lambda</span> x, o: x._get_current_object() - o</span><br><span class="line">    __mul__ = <span class="keyword">lambda</span> x, o: x._get_current_object() * o</span><br><span class="line">    __floordiv__ = <span class="keyword">lambda</span> x, o: x._get_current_object() // o</span><br><span class="line">    __mod__ = <span class="keyword">lambda</span> x, o: x._get_current_object() % o</span><br><span class="line">    __divmod__ = <span class="keyword">lambda</span> x, o: x._get_current_object().__divmod__(o)</span><br><span class="line">    __pow__ = <span class="keyword">lambda</span> x, o: x._get_current_object() ** o</span><br><span class="line">    __lshift__ = <span class="keyword">lambda</span> x, o: x._get_current_object() &lt;&lt; o</span><br><span class="line">    __rshift__ = <span class="keyword">lambda</span> x, o: x._get_current_object() &gt;&gt; o</span><br><span class="line">    __and__ = <span class="keyword">lambda</span> x, o: x._get_current_object() &amp; o</span><br><span class="line">    __xor__ = <span class="keyword">lambda</span> x, o: x._get_current_object() ^ o</span><br><span class="line">    __or__ = <span class="keyword">lambda</span> x, o: x._get_current_object() | o</span><br><span class="line">    __div__ = <span class="keyword">lambda</span> x, o: x._get_current_object().__div__(o)</span><br><span class="line">    __truediv__ = <span class="keyword">lambda</span> x, o: x._get_current_object().__truediv__(o)</span><br><span class="line">    __neg__ = <span class="keyword">lambda</span> x: -(x._get_current_object())</span><br><span class="line">    __pos__ = <span class="keyword">lambda</span> x: +(x._get_current_object())</span><br><span class="line">    __abs__ = <span class="keyword">lambda</span> x: abs(x._get_current_object())</span><br><span class="line">    __invert__ = <span class="keyword">lambda</span> x: ~(x._get_current_object())</span><br><span class="line">    __complex__ = <span class="keyword">lambda</span> x: complex(x._get_current_object())</span><br><span class="line">    __int__ = <span class="keyword">lambda</span> x: int(x._get_current_object())</span><br><span class="line">    __long__ = <span class="keyword">lambda</span> x: long(x._get_current_object())  <span class="comment"># noqa</span></span><br><span class="line">    __float__ = <span class="keyword">lambda</span> x: float(x._get_current_object())</span><br><span class="line">    __oct__ = <span class="keyword">lambda</span> x: oct(x._get_current_object())</span><br><span class="line">    __hex__ = <span class="keyword">lambda</span> x: hex(x._get_current_object())</span><br><span class="line">    __index__ = <span class="keyword">lambda</span> x: x._get_current_object().__index__()</span><br><span class="line">    __coerce__ = <span class="keyword">lambda</span> x, o: x._get_current_object().__coerce__(x, o)</span><br><span class="line">    __enter__ = <span class="keyword">lambda</span> x: x._get_current_object().__enter__()</span><br><span class="line">    __exit__ = <span class="keyword">lambda</span> x, *a, **kw: x._get_current_object().__exit__(*a, **kw)</span><br><span class="line">    __radd__ = <span class="keyword">lambda</span> x, o: o + x._get_current_object()</span><br><span class="line">    __rsub__ = <span class="keyword">lambda</span> x, o: o - x._get_current_object()</span><br><span class="line">    __rmul__ = <span class="keyword">lambda</span> x, o: o * x._get_current_object()</span><br><span class="line">    __rdiv__ = <span class="keyword">lambda</span> x, o: o / x._get_current_object()</span><br><span class="line">    <span class="keyword">if</span> PY2:</span><br><span class="line">        __rtruediv__ = <span class="keyword">lambda</span> x, o: x._get_current_object().__rtruediv__(o)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        __rtruediv__ = __rdiv__</span><br><span class="line">    __rfloordiv__ = <span class="keyword">lambda</span> x, o: o // x._get_current_object()</span><br><span class="line">    __rmod__ = <span class="keyword">lambda</span> x, o: o % x._get_current_object()</span><br><span class="line">    __rdivmod__ = <span class="keyword">lambda</span> x, o: x._get_current_object().__rdivmod__(o)</span><br><span class="line">    __copy__ = <span class="keyword">lambda</span> x: copy.copy(x._get_current_object())</span><br><span class="line">    __deepcopy__ = <span class="keyword">lambda</span> x, memo: copy.deepcopy(x._get_current_object(), memo)</span><br><span class="line"></span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+<p>所以整个流程是：从<code>LocalProxy</code>的实例<code>request</code>（flask/global.py） -&gt; <code></code>LocalProxy<code>的</code>_get_current_object<code>（werkzeug/local.py）-&gt;</code>_lookup_req_object<code>（flask/global.py）获得处于栈顶的</code>request`</p>
+<p>大概流程就是这样的，其他上下文也是类似的。等有空具体再研究下在哪里将<code>request</code>移除栈顶，和<code>werkzeug</code>的更多代码。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/01/19/阿里云短信平台Python3-SDK：SDK-InvalidRegionId-Can-not-find-endpoint-to-access-问题/" rel="next" title="阿里云短信平台Python3 SDK：SDK.InvalidRegionId Can not find endpoint to access 问题">
+                <i class="fa fa-chevron-left"></i> 阿里云短信平台Python3 SDK：SDK.InvalidRegionId Can not find endpoint to access 问题
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/03/12/Ngrok穿透原理/" rel="prev" title="Ngrok穿透原理">
+                Ngrok穿透原理 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+
+      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

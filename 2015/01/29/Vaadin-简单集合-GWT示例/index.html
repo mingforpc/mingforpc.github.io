@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="Vaadin 是一个基于GWT的框架，其中各种add-on，还可以与Spring等集成，但是当用户数量达到一定程度，或者需要提高反应速度，则要使用Vaadin进行Client端的开发了，因为Vaadin的自身组件会频繁的与服务端交互（甚至一个按钮的点击），有时候我们仅仅想要一个样式变换的效果，希望直接在Client端（即浏览器）进行，我们就需要用GWT进行Vaadin 的Client端开发。 而V">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Vaadin 简单集合 GWT示例">
+<meta property="og:url" content="http://yoursite.com/2015/01/29/Vaadin-简单集合-GWT示例/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="Vaadin 是一个基于GWT的框架，其中各种add-on，还可以与Spring等集成，但是当用户数量达到一定程度，或者需要提高反应速度，则要使用Vaadin进行Client端的开发了，因为Vaadin的自身组件会频繁的与服务端交互（甚至一个按钮的点击），有时候我们仅仅想要一个样式变换的效果，希望直接在Client端（即浏览器）进行，我们就需要用GWT进行Vaadin 的Client端开发。 而V">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/2015/01/29/Vaadin-简单集合-GWT示例/struct_1.png">
+<meta property="og:image" content="http://yoursite.com/2015/01/29/Vaadin-简单集合-GWT示例/struct_2.png">
+<meta property="og:updated_time" content="2018-12-13T12:24:05.189Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Vaadin 简单集合 GWT示例">
+<meta name="twitter:description" content="Vaadin 是一个基于GWT的框架，其中各种add-on，还可以与Spring等集成，但是当用户数量达到一定程度，或者需要提高反应速度，则要使用Vaadin进行Client端的开发了，因为Vaadin的自身组件会频繁的与服务端交互（甚至一个按钮的点击），有时候我们仅仅想要一个样式变换的效果，希望直接在Client端（即浏览器）进行，我们就需要用GWT进行Vaadin 的Client端开发。 而V">
+<meta name="twitter:image" content="http://yoursite.com/2015/01/29/Vaadin-简单集合-GWT示例/struct_1.png">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2015/01/29/Vaadin-简单集合-GWT示例/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Vaadin 简单集合 GWT示例 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2015/01/29/Vaadin-简单集合-GWT示例/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Vaadin 简单集合 GWT示例
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2015-01-29 22:13:00" itemprop="dateCreated datePublished" datetime="2015-01-29T22:13:00+08:00">2015-01-29</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 20:24:05" itemprop="dateModified" datetime="2018-12-13T20:24:05+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Java/Vaadin/" itemprop="url" rel="index"><span itemprop="name">Vaadin</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>Vaadin 是一个基于GWT的框架，其中各种add-on，还可以与Spring等集成，但是当用户数量达到一定程度，或者需要提高反应速度，则要使用Vaadin进行Client端的开发了，因为Vaadin的自身组件会频繁的与服务端交互（甚至一个按钮的点击），有时候我们仅仅想要一个样式变换的效果，希望直接在Client端（即浏览器）进行，我们就需要用GWT进行Vaadin 的Client端开发。</p>
+<p>而Vaadin的许多组件add-on（纯客户端的也可以叫widget）都是使用这种方式开发</p>
+<p>首先，widget的开发必须遵循如下结构（图来自Vaain官网，由Ying Li大大完全翻译了的官方教程！！链接:<a href="https://vaadin.com/book/zh/-/page/gwt.html#figure.gwt.overview.project" target="_blank" rel="noopener">https://vaadin.com/book/zh/-/page/gwt.html#figure.gwt.overview.project</a>）。  </p>
+<p><img src="/2015/01/29/Vaadin-简单集合-GWT示例/struct_1.png" alt=""></p>
+<p>而我所做的简单Demo结果如下：</p>
+<p><img src="/2015/01/29/Vaadin-简单集合-GWT示例/struct_2.png" alt="">  </p>
+<p>1.MyComponentWidget.java 这是一个GWT类，继承一个GWT的Button，其中类中定义了一个ComponentListener的内部接口，是为了在连接器（MyComponentConnector.java）中实现Widget中的事件传到连接器中。</p>
+<pre><code><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> component.client;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.google.gwt.event.dom.client.ClickEvent;</span><br><span class="line"><span class="keyword">import</span> com.google.gwt.event.dom.client.ClickHandler;</span><br><span class="line"><span class="keyword">import</span> com.vaadin.client.ui.VButton;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyComponentWidget</span> <span class="keyword">extends</span> <span class="title">VButton</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> ComponentListener listener;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//一个接口，为了在Connector监听到点击事件</span></span><br><span class="line">    <span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">ComponentListener</span> </span>&#123;</span><br><span class="line">        <span class="function"><span class="keyword">void</span> <span class="title">persistClick</span><span class="params">(String caption)</span></span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">MyComponentWidget</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>();</span><br><span class="line">        setText(<span class="string">"Button"</span>);</span><br><span class="line">        setTitle(<span class="string">"Button"</span>);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//添加一个简单的点击事件</span></span><br><span class="line">        addClickHandler(<span class="keyword">new</span> ClickHandler() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onClick</span><span class="params">(ClickEvent event)</span> </span>&#123;</span><br><span class="line">                listener.persistClick(<span class="string">"Title:"</span>+getTitle());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//设置监听器</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">setWidgetClickListener</span><span class="params">(<span class="keyword">final</span> ComponentListener listener)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.listener = listener;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</code></pre><p>2.MyComponentConnector.java是定义一个连接器，固定继承AbstractComponentConnector类，接口ComponentListener是之前在MyComponentWidget类中定义的接口。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> component.client;</span><br><span class="line"><span class="keyword">import</span> com.google.gwt.core.client.GWT;</span><br><span class="line"><span class="keyword">import</span> com.google.gwt.user.client.ui.Widget;</span><br><span class="line"><span class="keyword">import</span> com.vaadin.client.communication.RpcProxy;</span><br><span class="line"><span class="keyword">import</span> com.vaadin.client.communication.StateChangeEvent;</span><br><span class="line"><span class="keyword">import</span> com.vaadin.client.ui.AbstractComponentConnector;</span><br><span class="line"><span class="keyword">import</span> com.vaadin.shared.ui.Connect;</span><br><span class="line"><span class="keyword">import</span> component.MyComponent;</span><br><span class="line"><span class="keyword">import</span> component.client.MyComponentWidget.ComponentListener;</span><br><span class="line"><span class="comment">//连接器</span></span><br><span class="line"><span class="meta">@Connect</span>(MyComponent.class)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyComponentConnector</span> <span class="keyword">extends</span> <span class="title">AbstractComponentConnector</span> <span class="keyword">implements</span> <span class="title">ComponentListener</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//定义一个rpc通信，从客户端到服务端</span></span><br><span class="line">    <span class="keyword">private</span> MyComponentServerRpc rpc = RpcProxy.create(MyComponentServerRpc.class, <span class="keyword">this</span>);</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">MyComponentConnector</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 获得定义的widget */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> MyComponentWidget <span class="title">getWidget</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> (MyComponentWidget) <span class="keyword">super</span>.getWidget();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 获取定义的Component的state */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> MyComponentState <span class="title">getState</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> (MyComponentState) <span class="keyword">super</span>.getState();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 创建widget */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> Widget <span class="title">createWidget</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> MyComponentWidget widget = GWT.create(MyComponentWidget.class);</span><br><span class="line">        <span class="comment">/* 设置点击事件 */</span></span><br><span class="line">        widget.setWidgetClickListener(<span class="keyword">this</span>);</span><br><span class="line">        <span class="keyword">return</span> widget;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* state改变触发的事件，可以根据state的每个属性定义，详见官方文档 */</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onStateChanged</span><span class="params">(StateChangeEvent stateChangeEvent)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>.onStateChanged(stateChangeEvent);</span><br><span class="line">        getWidget().setText(getState().getMyComponentCaption());</span><br><span class="line">        getWidget().setTitle(getState().getMyComponentCaption());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">persistClick</span><span class="params">(String caption)</span> </span>&#123;</span><br><span class="line">        rpc.alertCaption(caption);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>3.MyComponentServerRpc 是clinet到server的rpc接口：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> component.client;</span><br><span class="line"><span class="keyword">import</span> com.vaadin.shared.communication.ServerRpc;</span><br><span class="line"><span class="comment">//ServerRpc 是定义 Client到Server段</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">MyComponentServerRpc</span> <span class="keyword">extends</span> <span class="title">ServerRpc</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">alertCaption</span><span class="params">(String caption)</span></span>;</span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>4.MyComponentState 是组件的状态，继承AbstractComponentState类，分别为你希望的属性：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> component.client;</span><br><span class="line"><span class="keyword">import</span> com.vaadin.shared.AbstractComponentState;</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyComponentState</span> <span class="keyword">extends</span> <span class="title">AbstractComponentState</span> </span>&#123;</span><br><span class="line">    <span class="comment">//这里简单的定义Component的标题</span></span><br><span class="line">    <span class="keyword">private</span> String myComponentCaption;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">MyComponentState</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getMyComponentCaption</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> myComponentCaption;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setMyComponentCaption</span><span class="params">(String myComponentCaption)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.myComponentCaption = myComponentCaption;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>5.MyComponent 就是服务端控制的component，要继承AbstractComponent类和implements server端RPC通信MyComponentServerRpc：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> component;</span><br><span class="line"><span class="keyword">import</span> com.vaadin.ui.AbstractComponent;</span><br><span class="line"><span class="keyword">import</span> com.vaadin.ui.Notification;</span><br><span class="line"><span class="keyword">import</span> component.client.MyComponentServerRpc;</span><br><span class="line"><span class="keyword">import</span> component.client.MyComponentState;</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MyComponent</span> <span class="keyword">extends</span> <span class="title">AbstractComponent</span> <span class="keyword">implements</span> <span class="title">MyComponentServerRpc</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">MyComponent</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>();</span><br><span class="line">        <span class="comment">/* 注册rpc */</span></span><br><span class="line">        registerRpc(<span class="keyword">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//显示标题</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">alertCaption</span><span class="params">(String caption)</span> </span>&#123;</span><br><span class="line">        Notification.show(caption);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//设置标题</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setCaption</span><span class="params">(String caption)</span> </span>&#123;</span><br><span class="line">        <span class="comment">//通过state设置caption</span></span><br><span class="line">        getState().setMyComponentCaption(caption);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> MyComponentState <span class="title">getState</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> (MyComponentState) <span class="keyword">super</span>.getState();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>差点漏了很重要的MyComponentWidgetSet.gwt.xml：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span></span><br><span class="line"><span class="meta">&lt;!DOCTYPE module PUBLIC "-//Google Inc.//DTD Google Web Toolkit 2.5.1//EN" "http://google-web-toolkit.googlecode.com/svn/tags/2.5.1/distro-source/core/src/gwt-module.dtd"&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">module</span>&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">        This file is automatically updated based on new dependencies by the</span></span><br><span class="line"><span class="comment">        goal "vaadin:update-widgetset".</span></span><br><span class="line"><span class="comment">    --&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- Inherit DefaultWidgetSet --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">inherits</span> <span class="attr">name</span>=<span class="string">"com.vaadin.DefaultWidgetSet"</span> /&gt;</span> </span><br><span class="line">    </span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">     Uncomment the following to compile the widgetset for one browser only.</span></span><br><span class="line"><span class="comment">     Multiple browsers can be specified as a comma separated list. The</span></span><br><span class="line"><span class="comment">     supported user agents at the moment of writing were:</span></span><br><span class="line"><span class="comment">     ie8,ie9,gecko1_8,safari,opera</span></span><br><span class="line"><span class="comment">     The value gecko1_8 is used for Firefox and safari is used for webkit</span></span><br><span class="line"><span class="comment">     based browsers including Google Chrome.</span></span><br><span class="line"><span class="comment">    --&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- &lt;set-property name="user.agent" value="safari"/&gt; --&gt;</span></span><br><span class="line">    <span class="comment">&lt;!--</span></span><br><span class="line"><span class="comment">     To enable SuperDevMode, uncomment this line.</span></span><br><span class="line"><span class="comment">     See https://vaadin.com/wiki/-/wiki/Main/Using%20SuperDevMode for more</span></span><br><span class="line"><span class="comment">     information and instructions.</span></span><br><span class="line"><span class="comment">    --&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- &lt;set-configuration-property name="devModeRedirectEnabled" value="true" /&gt; --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">inherits</span> <span class="attr">name</span>=<span class="string">"appWidgetSet.gwt.AppWidgetSet"</span> /&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">module</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>这样就完成一个简单的Vaadin add-on了=。=没找到如何上传附件啊！</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2016/05/22/Linux下I-O多路复用select-poll-epoll-三种模型的Python使用/" rel="prev" title="Linux下I/O多路复用select, poll, epoll 三种模型的Python使用">
+                Linux下I/O多路复用select, poll, epoll 三种模型的Python使用 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+
+      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

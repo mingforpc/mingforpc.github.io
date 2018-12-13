@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="const double PI = 3.1415 保护数据，使得PI不能被修改。 const int day[3] = [1, 2, 3]， day［1］ = 3 是会发生编译错误的。 double rates[2]  = [1.1, 2.2]; const double * pd = rates; 这表明不能使用指针pd去改变它所指向的值, 但可以让pd指向别处：   *pd = 3.3 //">
+<meta property="og:type" content="article">
+<meta property="og:title" content="C笔记">
+<meta property="og:url" content="http://yoursite.com/2016/08/20/C笔记/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="const double PI = 3.1415 保护数据，使得PI不能被修改。 const int day[3] = [1, 2, 3]， day［1］ = 3 是会发生编译错误的。 double rates[2]  = [1.1, 2.2]; const double * pd = rates; 这表明不能使用指针pd去改变它所指向的值, 但可以让pd指向别处：   *pd = 3.3 //">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2018-12-13T13:38:04.997Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="C笔记">
+<meta name="twitter:description" content="const double PI = 3.1415 保护数据，使得PI不能被修改。 const int day[3] = [1, 2, 3]， day［1］ = 3 是会发生编译错误的。 double rates[2]  = [1.1, 2.2]; const double * pd = rates; 这表明不能使用指针pd去改变它所指向的值, 但可以让pd指向别处：   *pd = 3.3 //">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2016/08/20/C笔记/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>C笔记 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2016/08/20/C笔记/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">C笔记
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2016-08-20 23:37:00" itemprop="dateCreated datePublished" datetime="2016-08-20T23:37:00+08:00">2016-08-20</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 21:38:04" itemprop="dateModified" datetime="2018-12-13T21:38:04+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <ul>
+<li><code>const double PI = 3.1415</code> 保护数据，使得<code>PI</code>不能被修改。</li>
+<li><code>const int day[3] = [1, 2, 3]</code>， <code>day［1］ = 3</code> 是会发生编译错误的。</li>
+<li><p><code>double rates[2]  = [1.1, 2.2]; const double * pd = rates;</code> 这<strong>表明不能使用指针<code>pd</code>去改变它所指向的值, 但可以让<code>pd</code>指向别处</strong>：</p>
+<p>  <code>*pd = 3.3</code> // 不允许</p>
+<p>  <code>pd[1] = 4.4</code> //不允许</p>
+<p>  <code>rates[0] = 3.3</code> // 允许</p>
+<p>  <code>pd++;</code> //让<code>pd</code>指向rates[1]，允许</p>
+</li>
+<li><p>首先，把<code>const</code>数据或非<code>const</code>数据的地址初始化为指向<code>const</code>的指针或为其赋值是合法的；但是，只能把<strong>非</strong><code>const</code>数据的地址给<strong>普通</strong>指针。</p>
+</li>
+<li><code>const</code>可以声明并初始化一个个不能指向别处的指针。如 <code>double * const pc = rates;</code> 指针<code>pc</code>不能指向别处。</li>
+<li>最后，在创建指针时，还可以使用<code>const</code>两次，该指针既不能改别它所指向的地址，也不能改变指向地址上的值。</li>
+</ul>
+<h2 id="fgets-char-restrict-int-FILE-和-gets-char-区别"><a href="#fgets-char-restrict-int-FILE-和-gets-char-区别" class="headerlink" title="fgets(char *restrict, int, FILE *) 和 gets(char *) 区别"></a><code>fgets(char *restrict, int, FILE *)</code> 和 <code>gets(char *)</code> 区别</h2><ul>
+<li><code>fget()</code>函数的第二个参数指明了读入字符的最大数量。如果该参数的值是n，那么<code>fgets()</code>将读入 n－1 个字符，或者读到遇到的第一个换行符为止。</li>
+<li>如果<code>fgets()</code>读到一个换行符，会把它存储在字符串中。这点与<code>get()</code>不同，<code>get()</code>会丢弃换行符。</li>
+<li>如果<code>fget()</code>函数的第3个参数指明要读入的文件。如果读入从键盘输入的数据，则以<code>stdin</code>作为参数，该标识符定义在<code>stdio.h</code>中。</li>
+</ul>
+<h2 id="gets-s-与fgets-区别"><a href="#gets-s-与fgets-区别" class="headerlink" title="gets_s()与fgets()区别"></a><code>gets_s()</code>与<code>fgets()</code>区别</h2><ul>
+<li><code>gets_s()</code>是C11中新增的，并且是 <code>stdio.h</code>输入／输出函数系列的可选扩展。</li>
+<li><code>gets_s()</code>只从标准输入中读取数据，所以不需要第3个参数。</li>
+<li>如果<code>gets_s()</code>读到换行符，会丢弃它而不是存储它。</li>
+<li>如果<code>gets_s()</code>读到最大字符数都没有读到换行符，会执行一下几步。首先把目标数组中的首字符设置为空字符，读取并丢弃随后的输入知道读到换行符或文件结尾，然后返回空指针。接着，调用依赖实现的“处理函数”(或者你选择的其它函数)，可能会中止或退出程序。</li>
+</ul>
+<h2 id="string-h中的常用字符串处理函数"><a href="#string-h中的常用字符串处理函数" class="headerlink" title="string.h中的常用字符串处理函数"></a><code>string.h</code>中的常用字符串处理函数</h2><ul>
+<li><code>size_t strlen(const char * s)</code>函数用于统计字符串的长度（其实是统计字符串开始到<code>\0</code>的字符个数）。</li>
+<li><code>char *strcat(char * restrict s1, const * restrict s2)</code>函数接受两个字符串座位参数，并把第2个字符串的备份附加在第1个字符串末位，并把拼接后形成的新字符串座位第1个字符串，第2个字符串不变。（拼接字符，要保证第1个字符串的长度要够，而且返回的字符串地址，就是第一个字符串地址）。缺点：不会检查第1个字符串是否会溢出。</li>
+<li><code>char *strncat(char * restrict s1, const * restrict s2, size_t n)</code>该函数的第3个参数指定了最大添加字符数，在添加到<code>size_t</code>个字符或者遇到空字符时停止。</li>
+<li><code>int strcmp(char *, char *)</code>函数比较字符串的<code>内容</code>是否相等，而不是<code>指针</code>。如果字符串相同，函数返回0。如果遇到不想等的字符，如比较”A”和”B”则返回”－1”，如比较”B”和”A”则返回”1”。</li>
+<li><code>int strncmp(char *, char *, size_t n)</code>函数在比较两个字符串时，可以比较到字符不同的地方，也可以只比较<code>size_t</code>参数制定的字符数。</li>
+<li><code>char *strcpy(char *, char *)</code>是将第2个参数中的字符串内容，拷贝到第一个参数中，一定要先给第1个参数分配地址空间，不然可能会出现问题，同时<code>strcpy()</code>不会检查目标空间是否能容纳源字符串的副本。（一般字符串变量是一个指向字符串的指针，<code>pts2=pts1</code>拷贝的是字符串的地址，而不是字符串的内容）</li>
+<li><code>char *strncpy(char *, char *, size_t)</code>，<code>size_t</code>指明可拷贝的最大字符数。</li>
+<li><code>sprintf（char *restrict， const char *restrict, ...)</code>函数是声明在<code>stdio.h</code>中，该函数是将数据写入字符串，第一个参数是目标字符串的地址，其它参数和<code>printf()</code>相同，即格式字符串和待写入项的列表。</li>
+<li><code>char *strchr(const char * s, int c)</code>如果 s 字符串中含有 c 字符，该函数返回指向 s 字符串首位置的指针（末尾的空字符也是字符串的一部分，在查找范围内）；如果在字符串 s 中未找到 c 字符，该函数则返回空指针。</li>
+<li><code>char *strpbrk(const char * s1, const char * s2)</code>，如果 s1 字符串中包含 s2 字符串中的任意字符，则该函数返回指向 s1 字符串首位置的指针，如果在 s1 中未找到任何 s2 字符串中的字符，则返回空字符。</li>
+<li><code>char *strrchr(const char * s, int c)</code>函数返回 s 字符串中 c 字符的最后一次出现的位置（末尾的空字符也是字符串的一部分，在查找范围内）。如果未找到 c 字符，则返回空指针。</li>
+<li><code>char *strstr(const char * s1, const char * s2)</code>该函数返回指向 s1 字符串中 s2 字符串出现的首位置。如果在 s1 中没有找到 s2 ，则返回空字符。</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2016/06/10/HTTP-结构、状态码、首部简记/" rel="next" title="HTTP 结构、状态码、首部简记">
+                <i class="fa fa-chevron-left"></i> HTTP 结构、状态码、首部简记
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2016/09/26/Python-包-init-py-作用/" rel="prev" title="Python 包 __init__.py 作用">
+                Python 包 __init__.py 作用 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#fgets-char-restrict-int-FILE-和-gets-char-区别"><span class="nav-number">1.</span> <span class="nav-text">fgets(char *restrict, int, FILE *) 和 gets(char *) 区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#gets-s-与fgets-区别"><span class="nav-number">2.</span> <span class="nav-text">gets_s()与fgets()区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#string-h中的常用字符串处理函数"><span class="nav-number">3.</span> <span class="nav-text">string.h中的常用字符串处理函数</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

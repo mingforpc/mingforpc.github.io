@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="Flask主要依赖于Werkzeug和Jinja这两个库，是很简洁的Python Web框架。  Werkzeug 是一个WSGI的工具包，是Flask的核心库。 Jinja 则是一个模板渲染的库，主要负责渲染返回给客户端的html文件。  各个文件的功能简介   文件名 功能简介     __init__.py 主要是添加了一些常用的模块或者对象，方便导入   _compat.py 主要是做 P">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flask源码阅读-包文件简介和大致流程">
+<meta property="og:url" content="http://yoursite.com/2018/09/25/Flask源码阅读-包文件简介和大致流程/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="Flask主要依赖于Werkzeug和Jinja这两个库，是很简洁的Python Web框架。  Werkzeug 是一个WSGI的工具包，是Flask的核心库。 Jinja 则是一个模板渲染的库，主要负责渲染返回给客户端的html文件。  各个文件的功能简介   文件名 功能简介     __init__.py 主要是添加了一些常用的模块或者对象，方便导入   _compat.py 主要是做 P">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_主要类的关系.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_Session关系.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_Wrapper关系.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_Context出入栈流程.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_full_dispatch_request的过程.png">
+<meta property="og:updated_time" content="2018-12-13T15:10:55.489Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Flask源码阅读-包文件简介和大致流程">
+<meta name="twitter:description" content="Flask主要依赖于Werkzeug和Jinja这两个库，是很简洁的Python Web框架。  Werkzeug 是一个WSGI的工具包，是Flask的核心库。 Jinja 则是一个模板渲染的库，主要负责渲染返回给客户端的html文件。  各个文件的功能简介   文件名 功能简介     __init__.py 主要是添加了一些常用的模块或者对象，方便导入   _compat.py 主要是做 P">
+<meta name="twitter:image" content="http://yoursite.com/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_主要类的关系.png">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/09/25/Flask源码阅读-包文件简介和大致流程/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Flask源码阅读-包文件简介和大致流程 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/09/25/Flask源码阅读-包文件简介和大致流程/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Flask源码阅读-包文件简介和大致流程
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-09-25 17:21:00" itemprop="dateCreated datePublished" datetime="2018-09-25T17:21:00+08:00">2018-09-25</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 23:10:55" itemprop="dateModified" datetime="2018-12-13T23:10:55+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Flask/" itemprop="url" rel="index"><span itemprop="name">Flask</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Flask/阅读笔记/" itemprop="url" rel="index"><span itemprop="name">阅读笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>Flask主要依赖于<code>Werkzeug</code>和<code>Jinja</code>这两个库，是很简洁的Python Web框架。</p>
+<ul>
+<li><code>Werkzeug</code> 是一个WSGI的工具包，是<code>Flask</code>的核心库。</li>
+<li><code>Jinja</code> 则是一个模板渲染的库，主要负责渲染返回给客户端的html文件。</li>
+</ul>
+<h2 id="各个文件的功能简介"><a href="#各个文件的功能简介" class="headerlink" title="各个文件的功能简介"></a>各个文件的功能简介</h2><table>
+<thead>
+<tr>
+<th>文件名</th>
+<th>功能简介</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>__init__.py</code></td>
+<td>主要是添加了一些常用的模块或者对象，方便导入</td>
+</tr>
+<tr>
+<td><code>_compat.py</code></td>
+<td>主要是做 <code>Python3</code> 与 <code>Python2</code> 之间的兼容处理，还有<code>pypy</code>的兼容处理</td>
+</tr>
+<tr>
+<td><code>app.py</code></td>
+<td>实现与定义WSGI对象的主要模块(WSGI规范可以参考<a href="https://github.com/mainframer/PEP333-zh-CN" target="_blank" rel="noopener">PEP333</a>和<a href="https://www.python.org/dev/peps/pep-3333" target="_blank" rel="noopener">PEP3333</a>)</td>
+</tr>
+<tr>
+<td><code>blueprints.py</code></td>
+<td>是Blueprints的实现与定义模块。Blueprints的作用是项目的模块划分，类似于Django的APP</td>
+</tr>
+<tr>
+<td><code>cli.py</code></td>
+<td>主要是Flask的命令行功能实现和命令行解析</td>
+</tr>
+<tr>
+<td><code>config.py</code></td>
+<td>实现与配置相关等功能</td>
+</tr>
+<tr>
+<td><code>ctx.py</code></td>
+<td>实现需要上下文管理相关的类与方法</td>
+</tr>
+<tr>
+<td><code>debughelpers.py</code></td>
+<td>定义一些错误提示或者检查的方法或类，增强开发者的体验</td>
+</tr>
+<tr>
+<td><code>globals.py</code></td>
+<td>定义所有全局对象或方法的文件</td>
+</tr>
+<tr>
+<td><code>helpers.py</code></td>
+<td>各种帮助类工具类和方法的文件</td>
+</tr>
+<tr>
+<td><code>logging.py</code></td>
+<td>日志模块的实现文件</td>
+</tr>
+<tr>
+<td><code>sessions.py</code></td>
+<td>定义和实现<code>cookie</code>和<code>session</code>的文件</td>
+</tr>
+<tr>
+<td><code>signals.py</code></td>
+<td>定义和处理信号的文件，主要以<code>blinker</code>库实现</td>
+</tr>
+<tr>
+<td><code>templating.py</code></td>
+<td>实现了与<code>Jinja</code>交互的接口文件</td>
+</tr>
+<tr>
+<td><code>testing.py</code></td>
+<td>实现测试需要的帮助类或者函数。一般不用于生产环境</td>
+</tr>
+<tr>
+<td><code>views.py</code></td>
+<td>定义和实现了视图的类</td>
+</tr>
+<tr>
+<td><code>wrappers.py</code></td>
+<td>实现WSGI规范中的Wrapper，Request和Response</td>
+</tr>
+</tbody>
+</table>
+<h2 id="主要类的简单解析"><a href="#主要类的简单解析" class="headerlink" title="主要类的简单解析"></a>主要类的简单解析</h2><h3 id="主要类的关系"><a href="#主要类的关系" class="headerlink" title="主要类的关系"></a>主要类的关系</h3><ol>
+<li><p>主要类的关系</p>
+<p> <img src="/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_主要类的关系.png" alt="Flask_主要类的关系.png"></p>
+</li>
+<li><p>Session类的关系</p>
+<p> <img src="/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_Session关系.png" alt="Flask_Session关系.png"></p>
+</li>
+<li><p>Wrapper类的关系</p>
+<p> <img src="/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_Wrapper关系.png" alt="Flask_Wrapper关系.png"></p>
+</li>
+</ol>
+<h3 id="Flask类"><a href="#Flask类" class="headerlink" title="Flask类"></a><code>Flask</code>类</h3><h3 id="Blueprint类"><a href="#Blueprint类" class="headerlink" title="Blueprint类"></a><code>Blueprint</code>类</h3><h2 id="Context-机制"><a href="#Context-机制" class="headerlink" title="Context 机制"></a>Context 机制</h2><h3 id="Werkzeug-local模块"><a href="#Werkzeug-local模块" class="headerlink" title="Werkzeug.local模块"></a><code>Werkzeug.local</code>模块</h3><p>参考之<a href="http://python.jobbole.com/87738/" target="_blank" rel="noopener">http://python.jobbole.com/87738/</a></p>
+<p>Pyhton标准库中<code>thread.local</code>，实现了线程局部变量，使得每个线程可以有私有变量，具有线程隔离性，可以通过线程安全的方式获取或者改变线程中的变量。</p>
+<p>而<code>Werkzeug.local</code>的功能与<code>thread.local</code>类似，不过<code>Werkzeug.local</code>在支持线程的基础上，加上了<code>greenlet</code>的协程支持。</p>
+<p>在Flask的上下文管理中，主要依赖了<code>Werkzeug.local</code>来实现的。</p>
+<p><code>Werkzeug.local</code>主要有4个类:</p>
+<ul>
+<li><code>Local</code></li>
+<li><code>LocalStack</code></li>
+<li><code>LocalProxy</code></li>
+<li><code>LocalManager</code></li>
+</ul>
+<h4 id="Local"><a href="#Local" class="headerlink" title="Local"></a><code>Local</code></h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># werkzeug.local</span></span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"><span class="keyword">try</span>:</span><br><span class="line">    <span class="keyword">from</span> greenlet <span class="keyword">import</span> getcurrent <span class="keyword">as</span> get_ident</span><br><span class="line"><span class="keyword">except</span> ImportError:</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        <span class="keyword">from</span> thread <span class="keyword">import</span> get_ident</span><br><span class="line">    <span class="keyword">except</span> ImportError:</span><br><span class="line">        <span class="keyword">from</span> _thread <span class="keyword">import</span> get_ident</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Local</span><span class="params">(object)</span>:</span></span><br><span class="line">    __slots__ = (<span class="string">'__storage__'</span>, <span class="string">'__ident_func__'</span>)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self)</span>:</span></span><br><span class="line">        object.__setattr__(self, <span class="string">'__storage__'</span>, &#123;&#125;)</span><br><span class="line">        object.__setattr__(self, <span class="string">'__ident_func__'</span>, get_ident)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__iter__</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> iter(self.__storage__.items())</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__call__</span><span class="params">(self, proxy)</span>:</span></span><br><span class="line">        <span class="string">"""Create a proxy for a name."""</span></span><br><span class="line">        <span class="keyword">return</span> LocalProxy(self, proxy)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__release_local__</span><span class="params">(self)</span>:</span></span><br><span class="line">        self.__storage__.pop(self.__ident_func__(), <span class="keyword">None</span>)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__getattr__</span><span class="params">(self, name)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">return</span> self.__storage__[self.__ident_func__()][name]</span><br><span class="line">        <span class="keyword">except</span> KeyError:</span><br><span class="line">            <span class="keyword">raise</span> AttributeError(name)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__setattr__</span><span class="params">(self, name, value)</span>:</span></span><br><span class="line">        ident = self.__ident_func__()</span><br><span class="line">        storage = self.__storage__</span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            storage[ident][name] = value</span><br><span class="line">        <span class="keyword">except</span> KeyError:</span><br><span class="line">            storage[ident] = &#123;name: value&#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__delattr__</span><span class="params">(self, name)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">del</span> self.__storage__[self.__ident_func__()][name]</span><br><span class="line">        <span class="keyword">except</span> KeyError:</span><br><span class="line">            <span class="keyword">raise</span> AttributeError(name)</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>__storage__</code>: 字典，用来保存不同线程/协程中的线程变量。字典中的Key为线程/协程的ID。</li>
+<li><code>__ident_func__</code>: 这个是保存获取当前线程/协程的ID函数。如果是协程，则是<code>greenlet.getcurrent</code>。如果是线程，则是<code>thread. get_ident</code>。</li>
+</ul>
+<p>在Local中调用<code>local.xxx</code>时，会调用<code>__getattr__</code>函数，在<code>__storage__</code>中用当前线程/协程ID作为Key然后再查找变量，代码: <code>self.__storage__[self.__ident_func__()][name]</code>。</p>
+<h4 id="LocalStack"><a href="#LocalStack" class="headerlink" title="LocalStack"></a><code>LocalStack</code></h4><p><code>LocalStack</code>则是使用<code>Local</code>实现一个栈来存储线程/协程的变量。</p>
+<p><code>LocalStack</code>还实现了push、pop、top等方法或属性。调用这些属性或者方法时，该类会根据当前线程/协程的ID，在Local实例中对相应的数值进行操作。</p>
+<h3 id="AppContext应用上下文"><a href="#AppContext应用上下文" class="headerlink" title="AppContext应用上下文"></a><code>AppContext</code>应用上下文</h3><p><code>AppContext</code>在请求、Flask的CLI命令及其他活动期间，保存整个应用程序级别的数据。类似于<code>RequestContext</code>是保存请求期间的数据一样。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ctx.py</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">AppContext</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="string">"""The application context binds an application object implicitly</span></span><br><span class="line"><span class="string">    to the current thread or greenlet, similar to how the</span></span><br><span class="line"><span class="string">    :class:`RequestContext` binds request information.  The application</span></span><br><span class="line"><span class="string">    context is also implicitly created if a request context is created</span></span><br><span class="line"><span class="string">    but the application is not on top of the individual application</span></span><br><span class="line"><span class="string">    context.</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, app)</span>:</span></span><br><span class="line">        self.app = app</span><br><span class="line">        self.url_adapter = app.create_url_adapter(<span class="keyword">None</span>)</span><br><span class="line">        self.g = app.app_ctx_globals_class()</span><br><span class="line"></span><br><span class="line">        <span class="comment"># Like request context, app contexts can be pushed multiple times</span></span><br><span class="line">        <span class="comment"># but there a basic "refcount" is enough to track them.</span></span><br><span class="line">        self._refcnt = <span class="number">0</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">push</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="string">"""Binds the app context to the current context."""</span></span><br><span class="line">        self._refcnt += <span class="number">1</span></span><br><span class="line">        <span class="keyword">if</span> hasattr(sys, <span class="string">'exc_clear'</span>):</span><br><span class="line">            sys.exc_clear()</span><br><span class="line">        _app_ctx_stack.push(self)</span><br><span class="line">        appcontext_pushed.send(self.app)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">pop</span><span class="params">(self, exc=_sentinel)</span>:</span></span><br><span class="line">        <span class="string">"""Pops the app context."""</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            self._refcnt -= <span class="number">1</span></span><br><span class="line">            <span class="keyword">if</span> self._refcnt &lt;= <span class="number">0</span>:</span><br><span class="line">                <span class="keyword">if</span> exc <span class="keyword">is</span> _sentinel:</span><br><span class="line">                    exc = sys.exc_info()[<span class="number">1</span>]</span><br><span class="line">                self.app.do_teardown_appcontext(exc)</span><br><span class="line">        <span class="keyword">finally</span>:</span><br><span class="line">            rv = _app_ctx_stack.pop()</span><br><span class="line">        <span class="keyword">assert</span> rv <span class="keyword">is</span> self, <span class="string">'Popped wrong app context.  (%r instead of %r)'</span> \</span><br><span class="line">            % (rv, self)</span><br><span class="line">        appcontext_popped.send(self.app)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__enter__</span><span class="params">(self)</span>:</span></span><br><span class="line">        self.push()</span><br><span class="line">        <span class="keyword">return</span> self</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__exit__</span><span class="params">(self, exc_type, exc_value, tb)</span>:</span></span><br><span class="line">        self.pop(exc_value)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> BROKEN_PYPY_CTXMGR_EXIT <span class="keyword">and</span> exc_type <span class="keyword">is</span> <span class="keyword">not</span> <span class="keyword">None</span>:</span><br><span class="line">            reraise(exc_type, exc_value, tb)</span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># globals.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> functools <span class="keyword">import</span> partial</span><br><span class="line"><span class="keyword">from</span> werkzeug.local <span class="keyword">import</span> LocalStack, LocalProxy</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">_lookup_app_object</span><span class="params">(name)</span>:</span></span><br><span class="line">    top = _app_ctx_stack.top</span><br><span class="line">    <span class="keyword">if</span> top <span class="keyword">is</span> <span class="keyword">None</span>:</span><br><span class="line">        <span class="keyword">raise</span> RuntimeError(_app_ctx_err_msg)</span><br><span class="line">    <span class="keyword">return</span> getattr(top, name)</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">_find_app</span><span class="params">()</span>:</span></span><br><span class="line">    top = _app_ctx_stack.top</span><br><span class="line">    <span class="keyword">if</span> top <span class="keyword">is</span> <span class="keyword">None</span>:</span><br><span class="line">        <span class="keyword">raise</span> RuntimeError(_app_ctx_err_msg)</span><br><span class="line">    <span class="keyword">return</span> top.app</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="comment"># context locals</span></span><br><span class="line">_app_ctx_stack = LocalStack()</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">current_app = LocalProxy(_find_app)</span><br><span class="line">g = LocalProxy(partial(_lookup_app_object, <span class="string">'g'</span>))</span><br></pre></td></tr></table></figure>
+<p>从代码中可以看到，<code>_app_ctx_stack</code>是一个<code>werkzeug.local.LocalStack</code>的栈，<code>current_app</code>和<code>g</code>是通过代理，每次获取栈顶元素<code>AppContext</code>的<code>app</code>和<code>g</code>属性。</p>
+<p><code>AppContext</code>的实现目的，主要目的是:</p>
+<ul>
+<li>使得一个进程中，可以多个Flask App共存，比如<code>Werkzeug</code>内置的<code>Middleware</code>可以将两个Flask App组合成一个WSGI应用，这种情况下，每个App都有自己独立的<code>AppContext</code>。</li>
+<li>可以使得一些App的全局属性，在离线的CLI命令或者单元测试等非Web环境中中进行访问，而不需要构造出请求，只需要将<code>AppContext</code> <code>push</code>到栈顶。</li>
+</ul>
+<p><code>AppContext</code>中有属性<code>_refcnt</code>，这个值是记录该上下文是否已经没被使用，默认值为<code>0</code>，每次<code>push()</code>则增1，<code>pop()</code>则减1，直至<code>_refcnt</code>减至<code>0</code>，才会触发<code>teardown_appcontext</code>的函数。</p>
+<h3 id="RequestContext请求上下文"><a href="#RequestContext请求上下文" class="headerlink" title="RequestContext请求上下文"></a><code>RequestContext</code>请求上下文</h3><p><code>RequestContext</code>在整个请求处理期间，保存整个请求级别的数据。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ctx.py</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">RequestContext</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="string">"""The request context contains all request relevant information.  It is</span></span><br><span class="line"><span class="string">    created at the beginning of the request and pushed to the</span></span><br><span class="line"><span class="string">    `_request_ctx_stack` and removed at the end of it.  It will create the</span></span><br><span class="line"><span class="string">    URL adapter and request object for the WSGI environment provided.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    Do not attempt to use this class directly, instead use</span></span><br><span class="line"><span class="string">    :meth:`~flask.Flask.test_request_context` and</span></span><br><span class="line"><span class="string">    :meth:`~flask.Flask.request_context` to create this object.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    When the request context is popped, it will evaluate all the</span></span><br><span class="line"><span class="string">    functions registered on the application for teardown execution</span></span><br><span class="line"><span class="string">    (:meth:`~flask.Flask.teardown_request`).</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    The request context is automatically popped at the end of the request</span></span><br><span class="line"><span class="string">    for you.  In debug mode the request context is kept around if</span></span><br><span class="line"><span class="string">    exceptions happen so that interactive debuggers have a chance to</span></span><br><span class="line"><span class="string">    introspect the data.  With 0.4 this can also be forced for requests</span></span><br><span class="line"><span class="string">    that did not fail and outside of ``DEBUG`` mode.  By setting</span></span><br><span class="line"><span class="string">    ``'flask._preserve_context'`` to ``True`` on the WSGI environment the</span></span><br><span class="line"><span class="string">    context will not pop itself at the end of the request.  This is used by</span></span><br><span class="line"><span class="string">    the :meth:`~flask.Flask.test_client` for example to implement the</span></span><br><span class="line"><span class="string">    deferred cleanup functionality.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    You might find this helpful for unittests where you need the</span></span><br><span class="line"><span class="string">    information from the context local around for a little longer.  Make</span></span><br><span class="line"><span class="string">    sure to properly :meth:`~werkzeug.LocalStack.pop` the stack yourself in</span></span><br><span class="line"><span class="string">    that situation, otherwise your unittests will leak memory.</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, app, environ, request=None)</span>:</span></span><br><span class="line">        self.app = app</span><br><span class="line">        <span class="keyword">if</span> request <span class="keyword">is</span> <span class="keyword">None</span>:</span><br><span class="line">            request = app.request_class(environ)</span><br><span class="line">        self.request = request</span><br><span class="line">        self.url_adapter = app.create_url_adapter(self.request)</span><br><span class="line">        self.flashes = <span class="keyword">None</span></span><br><span class="line">        self.session = <span class="keyword">None</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># Request contexts can be pushed multiple times and interleaved with</span></span><br><span class="line">        <span class="comment"># other request contexts.  Now only if the last level is popped we</span></span><br><span class="line">        <span class="comment"># get rid of them.  Additionally if an application context is missing</span></span><br><span class="line">        <span class="comment"># one is created implicitly so for each level we add this information</span></span><br><span class="line">        self._implicit_app_ctx_stack = []</span><br><span class="line"></span><br><span class="line">        <span class="comment"># indicator if the context was preserved.  Next time another context</span></span><br><span class="line">        <span class="comment"># is pushed the preserved context is popped.</span></span><br><span class="line">        self.preserved = <span class="keyword">False</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># remembers the exception for pop if there is one in case the context</span></span><br><span class="line">        <span class="comment"># preservation kicks in.</span></span><br><span class="line">        self._preserved_exc = <span class="keyword">None</span></span><br><span class="line"></span><br><span class="line">        <span class="comment"># Functions that should be executed after the request on the response</span></span><br><span class="line">        <span class="comment"># object.  These will be called before the regular "after_request"</span></span><br><span class="line">        <span class="comment"># functions.</span></span><br><span class="line">        self._after_request_functions = []</span><br><span class="line"></span><br><span class="line">        self.match_request()</span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># globals.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> functools <span class="keyword">import</span> partial</span><br><span class="line"><span class="keyword">from</span> werkzeug.local <span class="keyword">import</span> LocalStack, LocalProxy</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">_lookup_req_object</span><span class="params">(name)</span>:</span></span><br><span class="line">    top = _request_ctx_stack.top</span><br><span class="line">    <span class="keyword">if</span> top <span class="keyword">is</span> <span class="keyword">None</span>:</span><br><span class="line">        <span class="keyword">raise</span> RuntimeError(_request_ctx_err_msg)</span><br><span class="line">    <span class="keyword">return</span> getattr(top, name)</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="comment"># context locals</span></span><br><span class="line">_request_ctx_stack = LocalStack()</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">request = LocalProxy(partial(_lookup_req_object, <span class="string">'request'</span>))</span><br><span class="line">session = LocalProxy(partial(_lookup_req_object, <span class="string">'session'</span>))</span><br><span class="line"></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>从代码中可以看到，<code>_request_ctx_stack</code>是一个<code>werkzeug.local.LocalStack</code>的栈，<code>request</code>和<code>session</code>是通过代理，每次获取栈顶元素<code>RequestContext</code>的<code>request</code>和<code>session</code>属性。</p>
+<p><code>RequestContext</code>的实现目的，主要目的是:</p>
+<ul>
+<li>保证了每个请求之间的信息完全隔离，避免冲突。</li>
+<li>同时，可以简单的使用<code>from flask import request</code>获取当前的请求。</li>
+</ul>
+<p>一个线程只执行一个请求，所以<code>RequestContext</code>对于每个线程是唯一的。</p>
+<p>当Flask应用开始处理请求时，会将当前<code>RequestContext`</code>push<code>到栈顶，也会同时将</code>AppContext<code>push`到它的栈顶。当请求结束时，会将`RequestContext</code>pop<code>出，然后将</code>AppContext<code>也从其栈顶</code>pop`出。</p>
+<h3 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h3><p><img src="/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_Context出入栈流程.png" alt="Flask_Context出入栈流程.png"></p>
+<ul>
+<li>在经过步骤A后，<code>globals.py</code>的<code>_request_ctx_stack</code>和<code>_app_ctx_stack</code>的top分别为当前的<code>req_ctx</code>和<code>app_ctx</code>，经过<code>LocalProxy</code>的代理后，在Flask中所有的<code>from flask import session, request, g</code>，都是来自栈顶元素的<code>req_ctx</code>或者<code>app_ctx</code></li>
+<li>所以在步骤B中，对请求进行处理的都是当前线程的request。</li>
+<li>在步骤C中，会将<code>_request_ctx_stack</code>和<code>_app_ctx_stack</code>的栈顶元素弹出。</li>
+</ul>
+<p>在<code>RequestContext</code>中的<code>_implicit_app_ctx_stack</code>是为了防止在处理请求中有如下操作，使得<code>app_ctx</code>和<code>req_ctx</code>出栈错误:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 在请求处理中</span></span><br><span class="line"><span class="keyword">from</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> req_ctx:</span><br><span class="line">   ...</span><br><span class="line"><span class="comment"># 如果没有`_implicit_app_ctx_stack`做判断，会出错。AppContext中的`_refcnt`作用也类似</span></span><br></pre></td></tr></table></figure>
+<h2 id="请求接收到返回响应流程"><a href="#请求接收到返回响应流程" class="headerlink" title="请求接收到返回响应流程"></a>请求接收到返回响应流程</h2><p>在<strong>流程</strong>的图里，当<code>req_ctx.push()</code>后，就是开始调用<code>self.full_dispatch_request()</code>进行请求的处理了。</p>
+<p><img src="/2018/09/25/Flask源码阅读-包文件简介和大致流程/Flask_full_dispatch_request的过程.png" alt="Flask_full_dispatch_request的过程.png"></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/09/22/Redis源码阅读笔记-对象及其类型和编码/" rel="next" title="Redis源码阅读笔记-对象及其类型和编码">
+                <i class="fa fa-chevron-left"></i> Redis源码阅读笔记-对象及其类型和编码
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/10/31/用Kubeadm安装K8s后，kube-flannel-ds一直CrashLoopBackOff/" rel="prev" title="用Kubeadm安装K8s后，kube-flannel-ds一直CrashLoopBackOff">
+                用Kubeadm安装K8s后，kube-flannel-ds一直CrashLoopBackOff <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#各个文件的功能简介"><span class="nav-number">1.</span> <span class="nav-text">各个文件的功能简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主要类的简单解析"><span class="nav-number">2.</span> <span class="nav-text">主要类的简单解析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主要类的关系"><span class="nav-number">2.1.</span> <span class="nav-text">主要类的关系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Flask类"><span class="nav-number">2.2.</span> <span class="nav-text">Flask类</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Blueprint类"><span class="nav-number">2.3.</span> <span class="nav-text">Blueprint类</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Context-机制"><span class="nav-number">3.</span> <span class="nav-text">Context 机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Werkzeug-local模块"><span class="nav-number">3.1.</span> <span class="nav-text">Werkzeug.local模块</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Local"><span class="nav-number">3.1.1.</span> <span class="nav-text">Local</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#LocalStack"><span class="nav-number">3.1.2.</span> <span class="nav-text">LocalStack</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AppContext应用上下文"><span class="nav-number">3.2.</span> <span class="nav-text">AppContext应用上下文</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#RequestContext请求上下文"><span class="nav-number">3.3.</span> <span class="nav-text">RequestContext请求上下文</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#流程"><span class="nav-number">3.4.</span> <span class="nav-text">流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#请求接收到返回响应流程"><span class="nav-number">4.</span> <span class="nav-text">请求接收到返回响应流程</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

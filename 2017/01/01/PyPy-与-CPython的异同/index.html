@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="pypy支持的扩展模块（对应Python/Modules/中的模块） pypy支持的内建模块：  __builtin__：内建模块，包含一些常用的函数，如abs()等； __pypy__：提供一个由pypy解析器提供的特殊功能模块； _ast：抽象句法树模块的内建模块，一般直接使用ast模块； _codecs：注册表与基类的编解码器的内建模块，一般直接使用codecs模块； _collection">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PyPy 与 CPython的异同">
+<meta property="og:url" content="http://yoursite.com/2017/01/01/PyPy-与-CPython的异同/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="pypy支持的扩展模块（对应Python/Modules/中的模块） pypy支持的内建模块：  __builtin__：内建模块，包含一些常用的函数，如abs()等； __pypy__：提供一个由pypy解析器提供的特殊功能模块； _ast：抽象句法树模块的内建模块，一般直接使用ast模块； _codecs：注册表与基类的编解码器的内建模块，一般直接使用codecs模块； _collection">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2018-12-13T13:48:44.417Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="PyPy 与 CPython的异同">
+<meta name="twitter:description" content="pypy支持的扩展模块（对应Python/Modules/中的模块） pypy支持的内建模块：  __builtin__：内建模块，包含一些常用的函数，如abs()等； __pypy__：提供一个由pypy解析器提供的特殊功能模块； _ast：抽象句法树模块的内建模块，一般直接使用ast模块； _codecs：注册表与基类的编解码器的内建模块，一般直接使用codecs模块； _collection">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2017/01/01/PyPy-与-CPython的异同/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>PyPy 与 CPython的异同 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/01/01/PyPy-与-CPython的异同/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">PyPy 与 CPython的异同
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2017-01-01 23:26:00" itemprop="dateCreated datePublished" datetime="2017-01-01T23:26:00+08:00">2017-01-01</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 21:48:44" itemprop="dateModified" datetime="2018-12-13T21:48:44+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Python/" itemprop="url" rel="index"><span itemprop="name">Python</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Python/PyPy/" itemprop="url" rel="index"><span itemprop="name">PyPy</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="pypy支持的扩展模块（对应Python-Modules-中的模块）"><a href="#pypy支持的扩展模块（对应Python-Modules-中的模块）" class="headerlink" title="pypy支持的扩展模块（对应Python/Modules/中的模块）"></a>pypy支持的扩展模块（对应Python<code>/Modules/</code>中的模块）</h2><ul>
+<li><p>pypy支持的内建模块：</p>
+<ul>
+<li><code>__builtin__</code>：内建模块，包含一些常用的函数，如<code>abs()</code>等；</li>
+<li><code>__pypy__</code>：提供一个由pypy解析器提供的特殊功能模块；</li>
+<li><code>_ast</code>：抽象句法树模块的内建模块，一般直接使用<code>ast</code>模块；</li>
+<li><code>_codecs</code>：注册表与基类的编解码器的内建模块，一般直接使用<code>codecs</code>模块；</li>
+<li><code>_collections</code>：容器数据类型的内建模块，一般直接使用<code>collections</code>模块；</li>
+<li><code>_continuation</code>：</li>
+<li><code>_ffi</code>：</li>
+<li><code>_hashlib</code>：安全散列与消息摘要的内建模块，一般直接使用<code>hashlib</code>模块；</li>
+<li><code>_io</code>：io内建模块，一般直接使用<code>io</code>模块；</li>
+<li><code>_locale</code>：国际化的内建模块，一般直接使用<code>locale</code>模块；</li>
+<li><code>_lsprof</code>：Python分析器的内建模块，一般直接使用<code>lsprof</code>模块；</li>
+<li><code>_md5</code>：md5的内建模块，一般直接使用<code>md5</code>模块；</li>
+<li><code>_minimal_curses</code>：字符显示的终端处理curses的内建模块，一般直接使用<code>curses</code>模块，<code>_minimal_curses</code>仅是一个残留，只实现了部分功能，一般使用<code>_curses</code>；</li>
+<li><code>_multiprocessing</code>：基于进程的并行的<code>multiprocessing</code>的内建模块，一般直接使用<code>multiprocessing</code>模块；</li>
+<li><code>_random</code>：生成伪随机数的内建模块，一般直接使用<code>random</code>模块；</li>
+<li><code>_rawffi</code>：<a href="http://doc.pypy.org/en/latest/discussion/ctypes-implementation.html" target="_blank" rel="noopener"><em>_rawffi</em></a>是一个通过libffi来调用C的动态库方法和创建C对象（数组或结构体） 的内建模块；</li>
+<li><code>_sha</code>：SHA-1的内建模块，在pypy中还有<code>sha</code>模块，但是一般调用<code>hashlib</code>，在Ptyhon2.7中<code>sha</code>仍存在，但已经是Deprecated，Python3.X中<code>sha</code>已不再使用，一般直接使用<code>hashlib</code>模块；</li>
+<li><code>_socket</code>：Socket的内建模块，一般直接使用<code>socket</code>模块；</li>
+<li><code>_sre</code>：是实现正则表达式<code>re</code>大部分功能的内建模块，一般直接使用<code>re</code>模块；</li>
+<li><code>_ssl</code>：TLS/SSL的内建模块，一般直接使用<code>ssl</code>模块；</li>
+<li><code>_warnings</code>：警告控制的内建模块，一般直接使用<code>warnings</code>模块；</li>
+<li><code>_weakref</code>：弱引用的内建模块，一般直接使用<code>weakref</code>模块；</li>
+<li><code>_winreg</code>：Windows注册表访问的内建模块，一般直接使用<code>winreg</code>模块；</li>
+<li><code>array</code>：高效数值数组的内建模块；</li>
+<li><code>binascii</code>：二进制码与ASCII码间转化的内建模块；</li>
+<li><code>bz2</code>：对bzip2压缩支持的内建模块；</li>
+<li><code>cStringIO</code>：对内存进行文件操作（Read and write strings as files）的C实现的内建模块；</li>
+<li><code>cmath</code>：提供数学运算的C实现的内建模块；</li>
+<li><code>cpyext</code>：<a href="http://morepypy.blogspot.com/2010/04/using-cpython-extension-modules-with.html" target="_blank" rel="noopener">cpyext</a>内建模块提供让pypy使用CPython的扩展模块；</li>
+<li><code>crypt</code>：Unix密码验证的内建模块；</li>
+<li><code>errno</code>：标准错误记号的内建模块；</li>
+<li><code>exceptions</code>：异常处理的内建模块；</li>
+<li><code>fcntl</code>：系统调用文件锁fcntl()和ioctl()的内建模块；</li>
+<li><code>gc</code>：垃圾回收的内建模块；</li>
+<li><code>imp</code>：访问import模块接口的内建模块；</li>
+<li><code>itertools</code>：高效循环的迭代函数集合的内建模块；</li>
+<li><code>marshal</code>：序列化与反序列化的内建模块之一；</li>
+<li><code>math</code>：提供数学运算的内建模块；</li>
+<li><code>mmap</code>：内存映射文件支持的内建模块；</li>
+<li><code>operator</code>：针对函数标准操作的内建模块；</li>
+<li><code>parser</code>：访问Python解析树的内建模块；</li>
+<li><code>posix</code>：POSIX调用的内建模块；</li>
+<li><code>pyexpat</code>：解析xml的内建模块，一般直接使用<code>xml</code>模块；；</li>
+<li><code>select</code>：提供系统内I/O多路复用的内建模块；</li>
+<li><code>struct</code>：将字节解析为打包的二进制数据的内建模块；</li>
+<li><code>symbol</code>：Python解析树中的常量的内建模块；</li>
+<li><code>sys</code>：系统相关的参数与函数的内建模块；</li>
+<li><code>termios</code>：POSIX风格的tty控制的内建模块；</li>
+<li><code>thread</code>：线程的内建模块；</li>
+<li><code>time</code>：时间日期的内建模块；</li>
+<li><code>token</code>：Python解析树中的常量的内建模块；</li>
+<li><code>unicodedata</code>：Unicode字符数据库的内建模块；</li>
+<li><code>zipimport</code>：从ZIP归档中导入的内建模块；</li>
+<li><code>zlib</code>：兼容gzip压缩的内建模块；</li>
+</ul>
+</li>
+<li><p>通过纯Python重写的模块在 <a href="https://bitbucket.org/pypy/pypy/src/default/lib_pypy/" target="_blank" rel="noopener">lib_pypy/</a> （部分使用了<code>cffi</code>），比如：<code>ctypes</code>， <code>cPickle</code>， <code>cmath</code>， <code>dbm</code>，<code>datetime</code>；</p>
+</li>
+</ul>
+<h2 id="垃圾回收机制（gc）的不同"><a href="#垃圾回收机制（gc）的不同" class="headerlink" title="垃圾回收机制（gc）的不同"></a>垃圾回收机制（gc）的不同</h2><p>pypy的垃圾回收机制实现并<strong>不是</strong>使用<strong>引用计数</strong>，所以Object并不会在不被引用的情况下立即释放掉。最明显的影响是，文件（socket等）将不会在离开作用范围后立马被关闭掉。对于写打开的文件，这可能会导致写入的数据在缓冲区中一段时间，是的磁盘上文本被截断或还未写入。还可能导致文件打开数量超过系统的限制。</p>
+<p>如果需要调试程序中哪里没有正确关闭文件，可以使用<code>-X track-resources</code>来运行程序。这样，每当GC关闭一个文件（或者socket）将会产生一个<code>ResourceWarning</code>。这个警告会包含文件（或者socket）打开创建的位置，方便定位问题。</p>
+<p>测试代码：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="keyword">import</span> gc</span><br><span class="line">print(<span class="string">"start"</span>)</span><br><span class="line">i = <span class="number">1</span></span><br><span class="line"><span class="keyword">while</span> <span class="keyword">True</span>:</span><br><span class="line">    print(i)</span><br><span class="line">    i += <span class="number">1</span></span><br><span class="line">    open(<span class="string">"/data/test.log"</span>, <span class="string">"rw"</span>)</span><br><span class="line">    <span class="keyword">if</span> (i % <span class="number">10</span>) == <span class="number">0</span>:</span><br><span class="line">        gc.collect()</span><br><span class="line"></span><br><span class="line">print(<span class="string">"finished"</span>)</span><br></pre></td></tr></table></figure>
+<h3 id="对-del-和弱引用的影响"><a href="#对-del-和弱引用的影响" class="headerlink" title="对__del__和弱引用的影响"></a>对<code>__del__</code>和弱引用的影响</h3><p>这个问题，会影响到<code>__del__</code>方法调用的准确时间，因为pypy的回收是不确定的。这同样影响到<strong>弱引用（weak references）</strong>，使得弱引用会比预期的存活时间长。这导致弱引用代理（由<code>weakref.proxy(object[, callback])</code>返回）的实用性降低：这使得弱引用代理在目标对象的引用失效后仍然能够被访问，且会在某个时刻突然失效并在下次访问时引起<code>ReferenceError</code>错误。所有使用到弱引用代理的必须小心处理<code>ReferenceError</code>（或者，更好的方法是使用<code>weakref.ref()</code>而不是<code>weakref.proxy()</code>）。</p>
+<p>测试代码：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line">&gt;&gt;&gt;&gt; <span class="keyword">import</span> weakref</span><br><span class="line">&gt;&gt;&gt;&gt; <span class="keyword">import</span> gc</span><br><span class="line">&gt;&gt;&gt;&gt; <span class="class"><span class="keyword">class</span> <span class="title">A</span><span class="params">(object)</span>:</span></span><br><span class="line">....     <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self)</span>:</span></span><br><span class="line">....         self.test_attr = <span class="number">100</span></span><br><span class="line">....         </span><br><span class="line">&gt;&gt;&gt;&gt; <span class="function"><span class="keyword">def</span> <span class="title">test_func</span><span class="params">(refrence)</span>:</span></span><br><span class="line">....     print(<span class="string">"callback function!"</span>)</span><br><span class="line">....   </span><br><span class="line">&gt;&gt;&gt;&gt; a = A()</span><br><span class="line">&gt;&gt;&gt;&gt; </span><br><span class="line">&gt;&gt;&gt;&gt; x = weakref.proxy(a, test_func)</span><br><span class="line">&gt;&gt;&gt;&gt; x.test_attr</span><br><span class="line"><span class="number">100</span></span><br><span class="line">&gt;&gt;&gt;&gt; a.test_attr</span><br><span class="line"><span class="number">100</span></span><br><span class="line">&gt;&gt;&gt;&gt; <span class="keyword">del</span> a</span><br><span class="line">&gt;&gt;&gt;&gt; </span><br><span class="line">&gt;&gt;&gt;&gt; x.test_attr</span><br><span class="line"><span class="number">100</span></span><br><span class="line">&gt;&gt;&gt;&gt; gc.collect()</span><br><span class="line">callback function!</span><br><span class="line"><span class="number">0</span></span><br><span class="line">&gt;&gt;&gt;&gt; x</span><br><span class="line">&lt;weakproxy at <span class="number">0x00007f6f19011dc0</span>; dead&gt;</span><br><span class="line">&gt;&gt;&gt;&gt; x.test_attr</span><br><span class="line">Traceback (most recent call last):</span><br><span class="line">  File <span class="string">"&lt;stdin&gt;"</span>, line <span class="number">1</span>, <span class="keyword">in</span> &lt;module&gt;</span><br><span class="line">ReferenceError: weakly referenced object no longer exists</span><br><span class="line">&gt;&gt;&gt;&gt;</span><br><span class="line">&gt;&gt;&gt;&gt; a = A()</span><br><span class="line">&gt;&gt;&gt;&gt; x = weakref.ref(a, test_func)</span><br><span class="line">&gt;&gt;&gt;&gt; <span class="keyword">print</span> x</span><br><span class="line">&lt;weakref at <span class="number">0x00007f6f190631a0</span>; to <span class="string">'A'</span>&gt;</span><br><span class="line">&gt;&gt;&gt;&gt; b = x()</span><br><span class="line">&gt;&gt;&gt;&gt; b.test_attr</span><br><span class="line"><span class="number">100</span></span><br><span class="line">&gt;&gt;&gt;&gt; <span class="keyword">del</span> a</span><br><span class="line">&gt;&gt;&gt;&gt; gc.collect()</span><br><span class="line"><span class="number">0</span></span><br><span class="line">&gt;&gt;&gt;&gt; x</span><br><span class="line">&lt;weakref at <span class="number">0x00007f6f190631a0</span>; to <span class="string">'A'</span>&gt;</span><br><span class="line">&gt;&gt;&gt;&gt; b.test_attr</span><br><span class="line"><span class="number">100</span></span><br></pre></td></tr></table></figure>
+<p>某些情况下，由于CPython的引用计数，弱引用会在它指向的对象之前或之后立即释放掉，如果在之后释放掉，那么回调函数将会被调用。但在pypy类似的情况下，对象和弱引用会被认为同时释放，回调将不会被调用。</p>
+<h3 id="GC的其他影响"><a href="#GC的其他影响" class="headerlink" title="GC的其他影响"></a>GC的其他影响</h3><p>如果一个对象有<code>__del__</code>方法，在pypy中，<code>__del__</code>被调用的次数不会多于1次。但在CPython中，<code>__del__</code>在对象被“复活”然后“死亡”，<code>__del__</code>可能会被调用多次。（此处有一段不是很懂，详见Blog<a href="http://morepypy.blogspot.com/2008/02/python-finalizers-semantics-part-1.html" target="_blank" rel="noopener">[1]</a> <a href="http://morepypy.blogspot.com/2008/02/python-finalizers-semantics-part-2.html" target="_blank" rel="noopener">[2]</a>.）</p>
+<p>GC的差异也会间接的影响到其他方面。比如，pypy代码中的生成器，将会比CPython中更迟的被垃圾回收。这会影响到<code>yield</code>关键字，如果<code>yield</code>在<code>try:</code>或者<code>with:</code>中，这会有一个<a href="http://bugs.pypy.org/issue736" target="_blank" rel="noopener">issue 736</a>。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># import gc</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">g</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        <span class="keyword">yield</span> <span class="number">1</span></span><br><span class="line">    <span class="keyword">finally</span>:</span><br><span class="line">        <span class="keyword">print</span> <span class="string">"finally"</span></span><br><span class="line"></span><br><span class="line">g().next()</span><br><span class="line"><span class="comment"># gc.collect()</span></span><br></pre></td></tr></table></figure>
+<p>这段代码，在pypy中是没有打印出<code>finally</code>，在CPython中是有打印的。原因是，在pypy中，<code>finally</code>只有在对象被垃圾回收机制回收时才会打印。如果在最后调用<code>gc.collect()</code>，将能够打印出来。</p>
+<p>使用默认的GC（<code>minimark</code>），内建函数<code>id()</code>将会像CPython中那样工作。但使用其他GC，<code>id()</code>返回的数字，并不是内存地址（因为一个对象的地址可能会改变），而且太频繁调用将会引起性能问题。</p>
+<p>如果程序中有很长的链表对象，每一个中都有指向下一个的引用，并且都有<code>__del__</code>，这会导致pypy的GC的性能下降。但在其他情况下，pypy的GC性能普遍比CPython好。</p>
+<p><code>__del__</code>还有另外一个不同的地方，如果往一个已经存在的类中动态加入<code>__del__</code>，它将不会调用：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&gt;&gt;&gt;&gt; <span class="class"><span class="keyword">class</span> <span class="title">A</span><span class="params">(object)</span>:</span></span><br><span class="line">....     <span class="keyword">pass</span></span><br><span class="line">....</span><br><span class="line">&gt;&gt;&gt;&gt; A.__del__ = <span class="keyword">lambda</span> self: <span class="keyword">None</span></span><br><span class="line">__main__:<span class="number">1</span>: RuntimeWarning: a __del__ method added to an existing type will <span class="keyword">not</span> be called</span><br></pre></td></tr></table></figure>
+<p>在pypy中，如果你将<code>__del__</code>动态绑定给Python的旧式类的对象(对于CPython的新式类也是不工作的)，将会得到一个<code>RuntimeWarning</code>。修改这个issuse的方法是，在类中定义<code>__del__</code>，仅包含<code>pass</code>（或者其他实现），再在运行时动态修改；</p>
+<p>CPython会在程序结束的时候去自动执行<code>gc.collect()</code>，但pypy并不会。</p>
+<h2 id="内建类型-types-的子类"><a href="#内建类型-types-的子类" class="headerlink" title="内建类型(types)的子类"></a>内建类型(types)的子类</h2><p>官方实现上，CPython对于内建类型的子类的重载方法是否会被隐式调用没有确定任何规则。类似的，这些被重载的方法不会被同一个对象的其他内置方法调用。例如：一个在<code>dict</code>子类中被重载的<code>__getitem__()</code>将不会被其内置函数<code>get()</code>调用。</p>
+<p>上述的情况在CPython中和PyPy中都是正确的。不同的是，一个除<code>self</code>以外的另一对象的内置方法是否会调用一个被重载的方法。这通常在CPython中是不会被调用的，而在PyPy中则会被调用。例子：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">D</span><span class="params">(dict)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__getitem__</span><span class="params">(self, key)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> <span class="string">"%r from D"</span> % (key,)</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line">a = A()</span><br><span class="line">a.__dict__ = D()</span><br><span class="line">a.foo = <span class="string">"a's own foo"</span></span><br><span class="line"><span class="keyword">print</span> a.foo</span><br><span class="line"><span class="comment"># CPython =&gt; a's own foo</span></span><br><span class="line"><span class="comment"># PyPy =&gt; 'foo' from D</span></span><br><span class="line"></span><br><span class="line">glob = D(foo=<span class="string">"base item"</span>)</span><br><span class="line">loc = &#123;&#125;</span><br><span class="line"><span class="keyword">exec</span> <span class="string">"print foo"</span> <span class="keyword">in</span> glob, loc</span><br><span class="line"><span class="comment"># CPython =&gt; base item</span></span><br><span class="line"><span class="comment"># PyPy =&gt; 'foo' from D</span></span><br></pre></td></tr></table></figure>
+<h2 id="在字典（dictionary）中作为key的自定义类的对象"><a href="#在字典（dictionary）中作为key的自定义类的对象" class="headerlink" title="在字典（dictionary）中作为key的自定义类的对象"></a>在字典（dictionary）中作为key的自定义类的对象</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">X</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">__evil_eq__</span><span class="params">(self, other)</span>:</span></span><br><span class="line">    <span class="keyword">print</span> <span class="string">'hello world'</span></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">False</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">evil</span><span class="params">(y)</span>:</span></span><br><span class="line">    d = &#123;X(): <span class="number">1</span>&#125;</span><br><span class="line">    X.__eq__ = __evil_eq__</span><br><span class="line">    d[y] <span class="comment"># might trigger a call to __eq__?</span></span><br></pre></td></tr></table></figure>
+<p>在CPython中，<code>__evil_eq__</code><strong>可能</strong>会被调用到，尽管没有办法写出一个必能重现的例子。这会发生在<code>y is not x</code> 且 <code>hash(y) == hash(x)</code>，同时，<code>hash(x)</code>是在<code>x</code>插入在一个字典中的时候计算的。如果条件满足，这个<code>__evil_eq__</code>方法将会被调用。</p>
+<p>PyPy使用一个特殊的策略来优化，一个用户自定义类的实例作为Keys在字典当中，且这个自定义类是没有重载<code>__hash__</code>，<code>__eq__</code>，<code>__cmp__</code>：当使用这个策略的时候，<code>__eq__</code>和<code>__cmp__</code>将不会被调用，而是通过查找id(identity)。所以在上述代码的情况下，PyPy将能保证<code>__eq__</code>不会被调用。</p>
+<p>在其他情况下（比如，有一个自定义的<code>__hash__</code>和<code>__eq__</code>在<code>y</code>中），PyPy将会和CPython一样。</p>
+<h2 id="原始数据类型的对象标识，is-和-id"><a href="#原始数据类型的对象标识，is-和-id" class="headerlink" title="原始数据类型的对象标识，is 和 id"></a>原始数据类型的对象标识，<code>is</code> 和 <code>id</code></h2><p>原始数据类型的对象标识是根据值来判断想等，而不是包装器的标识。这意味着对于一个任意值的整数（interger）<code>x</code>来说<code>x + 1 is x + 1</code>总是返回<code>True</code>。这个规则适合如下的数据类型：</p>
+<ul>
+<li><code>int</code></li>
+<li><code>float</code></li>
+<li><code>long</code></li>
+<li><code>complex</code></li>
+<li><code>str</code>（只对空字符串或单个字符的字符串有效）</li>
+<li><code>unicode</code>（只对空字符串或单个字符的字符串有效）</li>
+<li><code>tuple</code>（只对空元组有效）</li>
+<li><code>frozenset</code>（只对空的frozenset有效）</li>
+</ul>
+<p>这个改变需要<code>id()</code>也要做出相应的改变。<code>id()</code>需要满足如下情况：<code>x is y &lt;=&gt; id(x) &lt;=&gt; id(y)</code>。因此上述类型的<code>id()</code>将返回一个从参数计算而得到的值，因此可以大于<code>sys.maxint</code>(所以可以是任意长)。</p>
+<p>记住，一个长度大于等于2的字符串，可以<strong>相等</strong>（<code>==</code>，equal）却不一定<strong>相同</strong>（<code>is</code>，identical）。类似的，尽管<code>x</code>包含一个元组且<code>x == (2,)</code>，但<code>x is (2,)</code>不一定返回<code>True</code>。这个规则只适应于上述的类型。<code>str</code>、<code>unicode</code>、<code>tuple</code>和<code>frozenset</code>是在PyPy5.4版本中才适应这个规则。在5.4之前，尽管<code>x</code>等于<code>?</code>或<code>()</code>，但是<code>if x is &quot;?&quot;</code> 或者 <code>if x is ()</code>将会返回<code>False</code>。这个5.4中的新行为是更为接近CPython，Cpython可以精确的缓存空<code>tuple</code>或<code>firzenset</code>和长度小于等于1的字符串或者unicodes(对于字符串和unicodes并不总是会缓存，当大部分情况是)。</p>
+<p>对于float，“<code>is</code>”是针对一个对象的<code>float</code>“位模式”。所以<code>float(&#39;nan&#39;) is float(&#39;nan&#39;)</code>在PyPy上返回<code>True</code>，在CPython上返回<code>False</code>，因为这是两个对象。但是<code>0.0 is -0.0</code>都返回<code>False</code>，因为“位模式”不同。一般的，<code>float(&#39;nan&#39;) == float(&#39;nan&#39;)</code>总是返回<code>False</code>。当在容器中使用时（在列表项或者集合中），判断相等采用<code>if x is y or x == y</code>（不论在Cpython中或PyPy中）。因此，因为所有的<code>nans</code>在PyPy中是相同的，所以不能在一个集合中使用多次，不像CPython(Issuse <a href="https://bitbucket.org/pypy/pypy/issues/1974/different-behaviour-for-collections-of" target="_blank" rel="noopener">#1974</a>)</p>
+<h2 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h2><ul>
+<li><code>hash()</code>方法的<a href="http://bugs.python.org/issue14621" target="_blank" rel="noopener">随机bug</a>在pypy中是忽略的，所以会有以下不同：</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Python <span class="number">3.4</span><span class="number">.0</span> (default, Apr <span class="number">11</span> <span class="number">2014</span>, <span class="number">13</span>:<span class="number">05</span>:<span class="number">11</span>) </span><br><span class="line">[GCC <span class="number">4.8</span><span class="number">.2</span>] on linux</span><br><span class="line">Type <span class="string">"help"</span>, <span class="string">"copyright"</span>, <span class="string">"credits"</span> <span class="keyword">or</span> <span class="string">"license"</span> <span class="keyword">for</span> more information.</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>a = <span class="string">"1"</span></span><br><span class="line"> &gt;&gt;&gt;hash(a)</span><br><span class="line"><span class="number">-7159617557763069555</span></span><br><span class="line"> &gt;&gt;&gt;exit()</span><br></pre></td></tr></table></figure>
+<p>再次运行：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Python <span class="number">3.4</span><span class="number">.0</span> (default, Apr <span class="number">11</span> <span class="number">2014</span>, <span class="number">13</span>:<span class="number">05</span>:<span class="number">11</span>) </span><br><span class="line">[GCC <span class="number">4.8</span><span class="number">.2</span>] on linux</span><br><span class="line">Type <span class="string">"help"</span>, <span class="string">"copyright"</span>, <span class="string">"credits"</span> <span class="keyword">or</span> <span class="string">"license"</span> <span class="keyword">for</span> more information.</span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>a = <span class="string">"1"</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>hash(a)</span><br><span class="line"><span class="number">461546025534110251</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span>exit()</span><br></pre></td></tr></table></figure>
+<p>两次的hash值是不同的，而在pypy中，两次的hash值是一样的：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Python <span class="number">2.7</span><span class="number">.3</span> (<span class="number">2.2</span><span class="number">.1</span>+dfsg<span class="number">-1</span>ubuntu0<span class="number">.3</span>, Sep <span class="number">30</span> <span class="number">2015</span>, <span class="number">15</span>:<span class="number">18</span>:<span class="number">40</span>)</span><br><span class="line">[PyPy <span class="number">2.2</span><span class="number">.1</span> <span class="keyword">with</span> GCC <span class="number">4.8</span><span class="number">.4</span>] on linux2</span><br><span class="line">Type <span class="string">"help"</span>, <span class="string">"copyright"</span>, <span class="string">"credits"</span> <span class="keyword">or</span> <span class="string">"license"</span> <span class="keyword">for</span> more information.</span><br><span class="line">And now <span class="keyword">for</span> something completely different: ``pypy <span class="keyword">is</span> more stable than debian<span class="string">''</span></span><br><span class="line">&gt;&gt;&gt;&gt; a = <span class="string">"1"</span></span><br><span class="line">&gt;&gt;&gt;&gt; hash(a)</span><br><span class="line"><span class="number">6272018864</span> </span><br><span class="line">&gt;&gt;&gt;&gt; exit()</span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Python <span class="number">2.7</span><span class="number">.3</span> (<span class="number">2.2</span><span class="number">.1</span>+dfsg<span class="number">-1</span>ubuntu0<span class="number">.3</span>, Sep <span class="number">30</span> <span class="number">2015</span>, <span class="number">15</span>:<span class="number">18</span>:<span class="number">40</span>)</span><br><span class="line">[PyPy <span class="number">2.2</span><span class="number">.1</span> <span class="keyword">with</span> GCC <span class="number">4.8</span><span class="number">.4</span>] on linux2</span><br><span class="line">Type <span class="string">"help"</span>, <span class="string">"copyright"</span>, <span class="string">"credits"</span> <span class="keyword">or</span> <span class="string">"license"</span> <span class="keyword">for</span> more information.</span><br><span class="line">And now <span class="keyword">for</span> something completely different: ``we still have to write software</span><br><span class="line"><span class="keyword">with</span> a metaspace bubble <span class="keyword">in</span> it<span class="string">''</span></span><br><span class="line">&gt;&gt;&gt;&gt; a = <span class="string">"1"</span></span><br><span class="line">&gt;&gt;&gt;&gt; hash(a)</span><br><span class="line"><span class="number">6272018864</span></span><br><span class="line">&gt;&gt;&gt;&gt; exit()</span><br></pre></td></tr></table></figure>
+<ul>
+<li>不能在一个类型对象中存储一个非字符串的key。例子：</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span><span class="params">(object)</span>:</span></span><br><span class="line">    locals()[<span class="number">42</span>] = <span class="number">3</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 在PyPy中是不行的</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li><p><code>sys.setrecursionlimit(n)</code>仅仅是设置一个大概的值。这个通过设置一个<code>n * 768</code>bytes的可用栈空间来实现的。在Linux上，这个依赖于编译器的设置，默认值768KB大约能满足1400次调用。</p>
+</li>
+<li><p>因为对于字典的实现是不同的，每次调用<code>__hash__</code>和<code>__eq__</code>所获的准确数字并不相同。由于CPython也没有一个准确的保证，所以不要依赖它。</p>
+</li>
+<li><p>对于<code>__class__</code>的赋值使用，是基于CPython2.5上的。对于CPython2.6和CPython2.7多个特性，PyPy仍未支持（如果需要的话，是可以支持的，但在PyPy上需要比CPython2.6/2.7注意更多情况？）。</p>
+</li>
+<li><p><code>__builtins__</code>的不同：<br>在python中有一个内建模块，中有一些常用函数。而该模块在Python启动后、且没有执行程序员所写的任何代码前，Python会首先加载该内建函数到内存。</p>
+<p>在pypy和python2.X中，该内建模块是<code>__builtin__</code>，在Python3.X中，该内建模块是<code>builtins</code>。</p>
+<p>而<code>__builtins__</code>则是对于这个内建模块的引用。</p>
+<p>无论任何地方要想使用内建模块，都必须在该位置所处的作用域中导入<code>__builtin__</code>(<code>builtins</code>)内建模块;而对于<code>__builtins__</code>却不用导入，它在任何模块都直接可见。</p>
+<p>在Python2/3中的主模块<code>__mian__</code>中，<code>__builtins__</code>是对内建模块<code>__builtin__</code>(<code>builtins</code>)本身的引用，即<code>__builtins__</code>完全等价于<code>__builtin__</code>(<code>builtins</code>)。</p>
+<p>在Python2/3中的<strong>非</strong>主模块<code>__mian__</code>中，<code>__builtins__</code>是对内建模块<code>__builtin__.__dict__</code>(<code>builtins.__dict__</code>)的引用，此时<code>__builtins__</code>的类型是字典。</p>
+</li>
+<li><p>对于使用无效参数直接调用内建类型的内部“魔法”函数，结果会有略微的不同。比如：<code>[].__add__(None)</code>和<code>(2).__add__(None)</code>在PyPy上都将返回<code>NotImplemented</code>；但在CPython 中，只有<code>(2).__add__(None)</code>会返回<code>NotImplemented</code>， <code>[].__add__(None)</code>将引起<code>TypeError</code>。（当然，<code>[] + None</code>和<code>2 + None</code>无论在PyPy和CPython中都会引起<code>TypeError</code>）。这是内部实现引起的差异，因为PyPy没有内部的C语言层面的实现（Slots？）。</p>
+</li>
+<li><p>在CPython中，<code>[].__add__</code>是一个<code>method-wrapper</code>，而<code>list.__add__</code>是一个<code>slot wrapper</code>。在PyPy中，它们都是一些普通的绑定或未绑定的方法对象。这有时会使得一些检查内置类型的工具混淆。比如，在标准库<code>inspect</code>模块中有一个<code>ismethod()</code>方法，当参数是绑定或未绑定的方法对象，这个方法将会返回<code>True</code>，当参数是<code>method-wrapper</code>或<code>slot wrapper</code>时，方法返回<code>False</code>。但PyPy并不能区分它们，所以<code>ismethod([].__add__) == ismethod(list.__add__) == True</code>。</p>
+</li>
+<li><p>在CPython，内置类型具有各种方式实现的属性。根据方式，如果试图写入（或删除）一个只读（或不可删除）属性时，将会引起一个<code>TypeError</code>或者<code>AttributeError</code>。PyPy试图在一致性和兼容性之间取舍。这意味着一些小地方将不会和CPython引起相同的异常，比如：<code>del (lambda:None).__closure__</code>。</p>
+</li>
+<li><p>在纯Python中，如果写一个类<code>class A(object): def f(self): pass</code>，且这个类有一个没有重载<code>f()</code>的子类<code>B</code>，这样<code>B.f(x)</code>仍然会检查<code>x</code>是<code>B</code>的一个实例。在CPython中，如果一个类型是用C语言实现的，那个这个类型将会有不同的规则。如果<code>A</code>是采用C语言实现，所有<code>A</code>的实例将会被<code>B.f(x)</code>接受（实际上，在这个情况下<code>B.f is A.f</code>是成立的）。一些代码可以在CPython上运行，但在PyPy上不能：<code>datetime.datetime.strftime(datetime.date.today(), ...)</code>（<code>datetime.date</code>是<code>datetime.datetime</code>的父类）。无论如何，正确修复这个方法调用应该:<code>datetime.date.today().strftime(...)</code>。</p>
+</li>
+<li><p>在PyPy中，新式类中的<code>__dict__</code>属性将会返回一个普通的dict，而不是像CPython中那样返回一个dict的代理。改变dict将会改变类型，反之亦然。对于内置对象，PyPy将会返回一个不可修改的dict（但行为和普通的dict类似）。</p>
+</li>
+<li><p><code>gc</code>模块的一些方法和属性会和CPython中有一些略微的不同，比如：<code>gc.enable</code>和<code>gc.disable</code>有被支持，但并不是启用或禁用GC，而是启用或禁用终结器(finalizers)的执行。</p>
+</li>
+<li><p>过去的版本中，PyPy在交互模式中启动时打印一段来之<code>#pypy IRC</code>的随机一行。但在release版本中，这个行为已经被抑制了。但设置一个<code>PYPY_IRC_TOPIC</code>环境变量将会启动这个行为。要注意使用到的软件包完全禁用这个功能。</p>
+</li>
+<li><p>PyPy的readline模块是完全重写的，它并不是GUN的readline。它添加了多行的支持（详见<code>multiline_input()</code>）。但另一方面<code>parse_and_bind()</code>的调用会被忽略(<a href="https://bitbucket.org/pypy/pypy/issues/2072" target="_blank" rel="noopener">issue #2072</a>)。</p>
+</li>
+<li><p><code>sys.getsizeof()</code>总会引起<code>TypeError</code>。这是因为此函数的内存分析器很有可能给出与PyPy实际上不同的结果。让<code>sys.getsizeof()</code>返回一个数字（需要足够的工作）是可行的，但是这个数字有可能不能准确代表着这个对象使用的内存大小。在于系统其余部分(?)隔绝的情况下，这个数字甚至反应不了一个对象使用的内存大小。比如一个实例有maps，这个maps会经常在许多实例之间共享。在这种情况下，这个maps会被<code>sys.getsizeof()</code>的实现忽略，但在某些情况下，如果这个maps有着很多唯一的实例，那么它的内存开销是很重要的。相反的，即使是不同的对象，相等的字符串可以共享它们的内部数据，或者一些空的container会一直共享它们部分的内存，直到它们不再为空。更奇怪的是，一些list会在你对它进行读操作时创建一些对象；如果尝试估计<code>range(10**6)</code>的内存大小综合，这个操作自身会创建一百万个整型对象，但这些对象在开始时不存在的。在CPython中也会有类似的问题，只是少一些。以上就是不实现<code>sys.getsizeof()</code>的原因。</p>
+</li>
+<li><p><code>timeit</code>模块在PyPy中的表现会有所不同：它但打印的时平均时间和标准差，而不是CPython中的最小值，因为最小值通常是有误差的。</p>
+</li>
+<li><p><code>sysconfig</code>模块中的<code>get_config_vars</code>方法和<code>distutil.sysconfig</code>这两个是未完成的。在POSIX平台，CPython在Makefile中获取配置变量来编译生成解析器。PyPy也需要在编译的期间生成这些值，但还未完成。</p>
+</li>
+<li><p>在<code>&quot;%d&quot; % d</code>、<code>&quot;%x&quot; % x</code>等类似的结构中，当<code>x</code>是一个<code>long</code>的子类的实例时，并且这个子类重载了<code>__str__</code>或<code>__hex__</code>或<code>__oct__</code>这几个特殊方法时：PyPy将不会调用这些特殊方法；CPython是会的，但仅限于<code>long</code>的子类，不包括<code>int</code>。CPython的这些表现是很混乱的：比如，对于<code>%x</code>应该调用<code>__hex__()</code>，<code>__hex__()</code>的功能是支持返回一个类似<code>-0x123L</code>的字符串了；然后<code>%x</code>会去掉<code>0x</code>和最后的<code>L</code>，保留其余部分。如果重载的<code>__hex__()</code>返回一个格式不正确的字符串，那么将会获得一个异常（在CPython2.7.13之前会之前crash）。</p>
+</li>
+<li><p>在CPython2.7.13中，<code>sqlite</code>模块有一个更新，当有一个提交时它将不再重置所有的游标（cursors）。这会使得PyPy中有一些麻烦（CPython也可能会有），所以PyPy并没有移植这个更改：<a href="http://bugs.python.org/issue29006" target="_blank" rel="noopener">http://bugs.python.org/issue29006</a>。</p>
+</li>
+</ul>
+<p>-</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2016/10/02/Python类中属性搜索的顺序/" rel="next" title="Python类中属性搜索的顺序">
+                <i class="fa fa-chevron-left"></i> Python类中属性搜索的顺序
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/01/02/Python-socket-non-blocking-with-SSL-的问题/" rel="prev" title="Python socket non-blocking with SSL 的问题">
+                Python socket non-blocking with SSL 的问题 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#pypy支持的扩展模块（对应Python-Modules-中的模块）"><span class="nav-number">1.</span> <span class="nav-text">pypy支持的扩展模块（对应Python/Modules/中的模块）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#垃圾回收机制（gc）的不同"><span class="nav-number">2.</span> <span class="nav-text">垃圾回收机制（gc）的不同</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#对-del-和弱引用的影响"><span class="nav-number">2.1.</span> <span class="nav-text">对__del__和弱引用的影响</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GC的其他影响"><span class="nav-number">2.2.</span> <span class="nav-text">GC的其他影响</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#内建类型-types-的子类"><span class="nav-number">3.</span> <span class="nav-text">内建类型(types)的子类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#在字典（dictionary）中作为key的自定义类的对象"><span class="nav-number">4.</span> <span class="nav-text">在字典（dictionary）中作为key的自定义类的对象</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#原始数据类型的对象标识，is-和-id"><span class="nav-number">5.</span> <span class="nav-text">原始数据类型的对象标识，is 和 id</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其他"><span class="nav-number">6.</span> <span class="nav-text">其他</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

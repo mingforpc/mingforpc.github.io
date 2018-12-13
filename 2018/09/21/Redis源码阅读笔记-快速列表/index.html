@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="快速列表快速列表(quicklist)是由压缩列表(ziplist)组成的一个双向链表，链表中，每一个节点都是以压缩列表(ziplist)的结构保存。 在 Redis3.2 后加入的新数据结构，在列表键中取代了双向链表的作用。 特点 双向链表（list）在插入节点删除节点上效率高，但是每个节点不连续，容易产生内存碎片。 压缩列表（ziplist）是一段连续的内存，但不利于修改，插入删除麻烦，复杂度">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis源码阅读笔记-快速列表">
+<meta property="og:url" content="http://yoursite.com/2018/09/21/Redis源码阅读笔记-快速列表/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="快速列表快速列表(quicklist)是由压缩列表(ziplist)组成的一个双向链表，链表中，每一个节点都是以压缩列表(ziplist)的结构保存。 在 Redis3.2 后加入的新数据结构，在列表键中取代了双向链表的作用。 特点 双向链表（list）在插入节点删除节点上效率高，但是每个节点不连续，容易产生内存碎片。 压缩列表（ziplist）是一段连续的内存，但不利于修改，插入删除麻烦，复杂度">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2018-12-13T14:57:43.231Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis源码阅读笔记-快速列表">
+<meta name="twitter:description" content="快速列表快速列表(quicklist)是由压缩列表(ziplist)组成的一个双向链表，链表中，每一个节点都是以压缩列表(ziplist)的结构保存。 在 Redis3.2 后加入的新数据结构，在列表键中取代了双向链表的作用。 特点 双向链表（list）在插入节点删除节点上效率高，但是每个节点不连续，容易产生内存碎片。 压缩列表（ziplist）是一段连续的内存，但不利于修改，插入删除麻烦，复杂度">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/09/21/Redis源码阅读笔记-快速列表/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Redis源码阅读笔记-快速列表 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/09/21/Redis源码阅读笔记-快速列表/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis源码阅读笔记-快速列表
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-09-21 21:32:00" itemprop="dateCreated datePublished" datetime="2018-09-21T21:32:00+08:00">2018-09-21</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 22:57:43" itemprop="dateModified" datetime="2018-12-13T22:57:43+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Redis/" itemprop="url" rel="index"><span itemprop="name">Redis</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Redis/阅读笔记/" itemprop="url" rel="index"><span itemprop="name">阅读笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="快速列表"><a href="#快速列表" class="headerlink" title="快速列表"></a>快速列表</h2><p>快速列表(quicklist)是由压缩列表(ziplist)组成的一个双向链表，链表中，每一个节点都是以压缩列表(ziplist)的结构保存。</p>
+<p>在 Redis3.2 后加入的新数据结构，在列表键中取代了双向链表的作用。</p>
+<h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><ul>
+<li>双向链表（list）在插入节点删除节点上效率高，但是每个节点不连续，容易产生内存碎片。</li>
+<li>压缩列表（ziplist）是一段连续的内存，但不利于修改，插入删除麻烦，复杂度高，频繁申请释放内存。</li>
+</ul>
+<p>快速列表综合了双向列表和压缩列表的优点，既有链表头尾插入相对便捷，又有连续内存存储的优点。</p>
+<h2 id="代码结构"><a href="#代码结构" class="headerlink" title="代码结构"></a>代码结构</h2><h3 id="快速列表结构"><a href="#快速列表结构" class="headerlink" title="快速列表结构"></a>快速列表结构</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* quicklist is a 40 byte struct (on 64-bit systems) describing a quicklist.</span></span><br><span class="line"><span class="comment"> * 'count' is the number of total entries.</span></span><br><span class="line"><span class="comment"> * 'len' is the number of quicklist nodes.</span></span><br><span class="line"><span class="comment"> * 'compress' is: -1 if compression disabled, otherwise it's the number</span></span><br><span class="line"><span class="comment"> *                of quicklistNodes to leave uncompressed at ends of quicklist.</span></span><br><span class="line"><span class="comment"> * 'fill' is the user-requested (or default) fill factor. */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">quicklist</span> &#123;</span></span><br><span class="line">    quicklistNode *head;</span><br><span class="line">    quicklistNode *tail;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> count;        <span class="comment">/* total count of all entries in all ziplists */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> len;          <span class="comment">/* number of quicklistNodes */</span></span><br><span class="line">    <span class="keyword">int</span> fill : <span class="number">16</span>;              <span class="comment">/* fill factor for individual nodes */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> compress : <span class="number">16</span>; <span class="comment">/* depth of end nodes not to compress;0=off */</span></span><br><span class="line">&#125; quicklist;</span><br></pre></td></tr></table></figure>
+<p>快速列表的结构:</p>
+<ul>
+<li><code>*head</code>: 指向快速列表(quicklist)头节点</li>
+<li><code>*tail</code>: 指向快速列表(quicklist)尾节点</li>
+<li><code>count</code>: 列表中，数据项的个数</li>
+<li><code>len</code>: 列表中，节点(quicklistNode)的个数</li>
+<li><code>fill</code>: 每个节点中压缩列表(ziplist)的大小限制，可以通过<code>list-max-ziplist-size</code>设定</li>
+<li><code>compress</code>: 节点的压缩深度设置，可以通过<code>list-compress-depth</code>设定</li>
+</ul>
+<h4 id="list-max-ziplist-size"><a href="#list-max-ziplist-size" class="headerlink" title="list-max-ziplist-size"></a>list-max-ziplist-size</h4><p><code>list-max-ziplist-size</code>的默认配置是<code>OBJ_LIST_MAX_ZIPLIST_SIZE -2</code>，参数的范围是（1 ~ 2^15）和（-1 ~ -5）：</p>
+<ul>
+<li>当参数为正数，表示按照数据项个数限制每个节点的元素个数。</li>
+<li>-1 每个节点的ziplist字节大小不能超过4kb</li>
+<li>-2 每个节点的ziplist字节大小不能超过8kb</li>
+<li>-3 每个节点的ziplist字节大小不能超过16kb</li>
+<li>-4 每个节点的ziplist字节大小不能超过32kb</li>
+<li>-5 每个节点的ziplist字节大小不能超过64kb</li>
+</ul>
+<p>PS: 具体代码参看<code>quicklist.c</code>中的<code>int _quicklistNodeSizeMeetsOptimizationRequirement(const size_t sz, const int fill)</code>函数，<code>sz</code>为节点中ziplist的字节数，<code>fill</code>为快速列表的属性<code>fill</code>。</p>
+<h4 id="list-compress-depth"><a href="#list-compress-depth" class="headerlink" title="list-compress-depth"></a>list-compress-depth</h4><p><code>list-compress-depth</code>的默认配置是<code>OBJ_LIST_COMPRESS_DEPTH 0</code>，取值范围是（0 ~ 2^16）:</p>
+<ul>
+<li>0 特殊值，表示不压缩</li>
+<li>1 表示quicklist两端各有1个节点不压缩，中间的节点压缩</li>
+<li>2 表示quicklist两端各有2个节点不压缩，中间的节点压缩</li>
+<li>3 表示quicklist两端各有3个节点不压缩，中间的节点压缩</li>
+<li>以此类推</li>
+</ul>
+<h3 id="快速列表节点结构"><a href="#快速列表节点结构" class="headerlink" title="快速列表节点结构"></a>快速列表节点结构</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Node, quicklist, and Iterator are the only data structures used currently. */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* quicklistNode is a 32 byte struct describing a ziplist for a quicklist.</span></span><br><span class="line"><span class="comment"> * We use bit fields keep the quicklistNode at 32 bytes.</span></span><br><span class="line"><span class="comment"> * count: 16 bits, max 65536 (max zl bytes is 65k, so max count actually &lt; 32k).</span></span><br><span class="line"><span class="comment"> * encoding: 2 bits, RAW=1, LZF=2.</span></span><br><span class="line"><span class="comment"> * container: 2 bits, NONE=1, ZIPLIST=2.</span></span><br><span class="line"><span class="comment"> * recompress: 1 bit, bool, true if node is temporarry decompressed for usage.</span></span><br><span class="line"><span class="comment"> * attempted_compress: 1 bit, boolean, used for verifying during testing.</span></span><br><span class="line"><span class="comment"> * extra: 12 bits, free for future use; pads out the remainder of 32 bits */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">quicklistNode</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">quicklistNode</span> *<span class="title">prev</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">quicklistNode</span> *<span class="title">next</span>;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span> *zl;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> sz;             <span class="comment">/* ziplist size in bytes */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> count : <span class="number">16</span>;     <span class="comment">/* count of items in ziplist */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> encoding : <span class="number">2</span>;   <span class="comment">/* RAW==1 or LZF==2 */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> container : <span class="number">2</span>;  <span class="comment">/* NONE==1 or ZIPLIST==2 */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> recompress : <span class="number">1</span>; <span class="comment">/* was this node previous compressed? */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> attempted_compress : <span class="number">1</span>; <span class="comment">/* node can't compress; too small */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> extra : <span class="number">10</span>; <span class="comment">/* more bits to steal for future usage */</span></span><br><span class="line">&#125; quicklistNode;</span><br></pre></td></tr></table></figure>
+<p>快速列表的节点结构:</p>
+<ul>
+<li><code>*prev</code>：指向上一个节点 </li>
+<li><code>*next</code>：指向下一个节点 </li>
+<li><code>*zl</code>： 指向数据的指针，如果没有被压缩则是指向压缩列表(ziplist)；如果被压缩了，则是指向quicklistLZF</li>
+<li><code>sz</code>： zl中指向的结构所占用的字节数</li>
+<li><code>count</code>： 节点中的元素项个数，最大为65536</li>
+<li><code>encoding</code>： 编码方式 RAW=1, LZF=2 （1表示压缩列表，2表示quicklistLZF）</li>
+<li><code>container</code>： 预留字段，存放数据的方式，1-NONE，2-ziplist(代码中并没有使用到，仅仅设置了默认值)</li>
+<li><code>recompress</code>： 标识位，1标识临时解压中，需要重新压缩</li>
+<li><code>attempted_compress</code>： 仅用于测试中</li>
+<li><code>extra</code>： 预留字段</li>
+</ul>
+<h3 id="LZF压缩数据结构"><a href="#LZF压缩数据结构" class="headerlink" title="LZF压缩数据结构"></a>LZF压缩数据结构</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* quicklistLZF is a 4+N byte struct holding 'sz' followed by 'compressed'.</span></span><br><span class="line"><span class="comment"> * 'sz' is byte length of 'compressed' field.</span></span><br><span class="line"><span class="comment"> * 'compressed' is LZF data with total (compressed) length 'sz'</span></span><br><span class="line"><span class="comment"> * <span class="doctag">NOTE:</span> uncompressed length is stored in quicklistNode-&gt;sz.</span></span><br><span class="line"><span class="comment"> * When quicklistNode-&gt;zl is compressed, node-&gt;zl points to a quicklistLZF */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">quicklistLZF</span> &#123;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> sz; <span class="comment">/* LZF size in bytes*/</span></span><br><span class="line">    <span class="keyword">char</span> compressed[];</span><br><span class="line">&#125; quicklistLZF;</span><br></pre></td></tr></table></figure>
+<p>quicklistLZF 经过LZF算法压缩后数据保存的结构:</p>
+<ul>
+<li><code>sz</code>： LZF压缩后占用的字节数</li>
+<li><code>compressed[]</code>compressed：压缩后的数据</li>
+</ul>
+<p>PS: 在<code>quicklist.c</code>中的<code>int __quicklistCompressNode(quicklistNode *node)</code>函数可以看到，当节点中的压缩列表的大小<strong>小于</strong><code>#define MIN_COMPRESS_BYTES 48</code>时，不会执行LZF压缩。</p>
+<h3 id="表示数据项结构"><a href="#表示数据项结构" class="headerlink" title="表示数据项结构"></a>表示数据项结构</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">quicklistEntry</span> &#123;</span></span><br><span class="line">    <span class="keyword">const</span> quicklist *quicklist;</span><br><span class="line">    quicklistNode *node;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span> *zi;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span> *value;</span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> longval;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> sz;</span><br><span class="line">    <span class="keyword">int</span> offset;</span><br><span class="line">&#125; quicklistEntry;</span><br></pre></td></tr></table></figure>
+<p>表示quicklist节点中ziplist里的一个数据项结构:</p>
+<ul>
+<li><code>*quicklist</code>: 指向所在的快速列表</li>
+<li><code>*node</code>: 指向所在的节点</li>
+<li><code>*zi</code>: 指向所在的压缩列表</li>
+<li><code>*value</code>: 当前压缩列表中的节点的字符串值</li>
+<li><code>longval</code>: 当前压缩列表中的节点的整数值 </li>
+<li><code>sz</code>: 当前压缩列表中的节点的字节大小</li>
+<li><code>offset</code>: 当前压缩列表中的节点 相对于 压缩列表 的偏移量</li>
+</ul>
+<h2 id="部分代码解析"><a href="#部分代码解析" class="headerlink" title="部分代码解析"></a>部分代码解析</h2><ul>
+<li><p><code>int quicklistPushHead(quicklist *quicklist, void *value, size_t sz)</code> 将大小为<code>sz</code>的新选项<code>value</code>添加到<code>quicklist</code>的头中，如果函数返回<code>0</code>表示使用已经存在的节点，如果返回<code>1</code>表示新建头节点：</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Add new entry to head node of quicklist.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Returns 0 if used existing head.</span></span><br><span class="line"><span class="comment"> * Returns 1 if new head created. */</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">quicklistPushHead</span><span class="params">(quicklist *quicklist, <span class="keyword">void</span> *value, <span class="keyword">size_t</span> sz)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// orig_head 指向列表头节点</span></span><br><span class="line">    quicklistNode *orig_head = quicklist-&gt;head;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 来之博客: https://blog.csdn.net/terence1212/article/details/53770882 的解析</span></span><br><span class="line">    <span class="comment">// likely()是linux提供给程序员的编译优化方法</span></span><br><span class="line">    <span class="comment">// 目的是将“分支转移”的信息提供给编译器，这样编译器可以对代码进行优化，以减少指令跳转带来的性能下降</span></span><br><span class="line">    <span class="comment">// 此处表示节点没有满发生的概率比较大，也就是数据项直接插入到当前节点的可能性大，</span></span><br><span class="line">    <span class="comment">// likely()属于编译器级别的优化</span></span><br><span class="line">    <span class="keyword">if</span> (likely(</span><br><span class="line">        <span class="comment">// 判断value是否能直接插入到头节点中，</span></span><br><span class="line">        <span class="comment">// 会通过设置的属性 fill 判断，</span></span><br><span class="line">        <span class="comment">// fill为正数时，主要判断 quicklist-&gt;head 中元素项的个数</span></span><br><span class="line">        <span class="comment">// fill为负数时，主要判断 quicklist-&gt;head 中的数据大小和新数据项value的大小</span></span><br><span class="line">        _quicklistNodeAllowInsert(quicklist-&gt;head, quicklist-&gt;fill, sz))) &#123;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 直接插入到 quicklist-&gt;head 的压缩列表中</span></span><br><span class="line">        quicklist-&gt;head-&gt;zl =</span><br><span class="line">            ziplistPush(quicklist-&gt;head-&gt;zl, value, sz, ZIPLIST_HEAD);</span><br><span class="line">        <span class="comment">// 更新压缩列表的大小</span></span><br><span class="line">        quicklistNodeUpdateSz(quicklist-&gt;head);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 需要新建节点</span></span><br><span class="line"></span><br><span class="line">        quicklistNode *node = quicklistCreateNode();</span><br><span class="line">        <span class="comment">// 指向新建压缩列表</span></span><br><span class="line">        node-&gt;zl = ziplistPush(ziplistNew(), value, sz, ZIPLIST_HEAD);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 更新节点的大小</span></span><br><span class="line">        quicklistNodeUpdateSz(node);</span><br><span class="line">        <span class="comment">// 将node插入为quicklist的表头</span></span><br><span class="line">        _quicklistInsertNodeBefore(quicklist, quicklist-&gt;head, node);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 元素项 总数 + 1</span></span><br><span class="line">    quicklist-&gt;count++;</span><br><span class="line">    quicklist-&gt;head-&gt;count++;</span><br><span class="line">    <span class="keyword">return</span> (orig_head != quicklist-&gt;head);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 判断长度为sz的值，是否能插入节点node</span></span><br><span class="line">REDIS_STATIC <span class="keyword">int</span> _quicklistNodeAllowInsert(<span class="keyword">const</span> quicklistNode *node,</span><br><span class="line">                                           <span class="keyword">const</span> <span class="keyword">int</span> fill, <span class="keyword">const</span> <span class="keyword">size_t</span> sz) &#123;</span><br><span class="line">    <span class="keyword">if</span> (unlikely(!node))</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	</span><br><span class="line">    <span class="comment">// ziplist_overhead为估算插入元素项后，压缩列表该元素项的头要占用的字节数</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 计算更新下一个节点的值，“上一个节点长度”所占用的字节数</span></span><br><span class="line">    <span class="keyword">int</span> ziplist_overhead;</span><br><span class="line">    <span class="comment">/* size of previous offset */</span></span><br><span class="line">    <span class="keyword">if</span> (sz &lt; <span class="number">254</span>)</span><br><span class="line">        ziplist_overhead = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        ziplist_overhead = <span class="number">5</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 计算编码“encoding”所占用的字节数</span></span><br><span class="line">    <span class="comment">/* size of forward offset */</span></span><br><span class="line">    <span class="keyword">if</span> (sz &lt; <span class="number">64</span>)</span><br><span class="line">        ziplist_overhead += <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (likely(sz &lt; <span class="number">16384</span>))</span><br><span class="line">        ziplist_overhead += <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        ziplist_overhead += <span class="number">5</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* new_sz overestimates if 'sz' encodes to an integer type */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> new_sz = node-&gt;sz + sz + ziplist_overhead;</span><br><span class="line">    <span class="comment">// new_sz为加入插入后，该压缩列表的大小</span></span><br><span class="line">    <span class="comment">// _quicklistNodeSizeMeetsOptimizationRequirement() 是判断list-max-ziplist-size的设置的</span></span><br><span class="line">    <span class="keyword">if</span> (likely(_quicklistNodeSizeMeetsOptimizationRequirement(new_sz, fill)))</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (!sizeMeetsSafetyLimit(new_sz))</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> ((<span class="keyword">int</span>)node-&gt;count &lt; fill)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><code>void quicklistInsertAfter(quicklist *quicklist, quicklistEntry *entry, void *value, const size_t sz)</code> 将大小为<code>sz</code>的值<code>value</code>插入到快速列表<code>quicklist</code>指定数据项节点<code>node</code>后:</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">quicklistInsertAfter</span><span class="params">(quicklist *quicklist, quicklistEntry *entry,</span></span></span><br><span class="line"><span class="function"><span class="params">                          <span class="keyword">void</span> *value, <span class="keyword">const</span> <span class="keyword">size_t</span> sz)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 调用_quicklistInsert()函数插入</span></span><br><span class="line">    <span class="comment">// 最后参数1表示，要将 value 插入到 entry后</span></span><br><span class="line">    _quicklistInsert(quicklist, entry, value, sz, <span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Insert a new entry before or after existing entry 'entry'.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * If after==1, the new value is inserted after 'entry', otherwise</span></span><br><span class="line"><span class="comment"> * the new value is inserted before 'entry'. */</span></span><br><span class="line"><span class="comment">// 要将大小为sz的value, 插入到元素项entry的前或后</span></span><br><span class="line"><span class="comment">// 1表示插入在后</span></span><br><span class="line"><span class="comment">// 其他表示插入在前</span></span><br><span class="line">REDIS_STATIC <span class="keyword">void</span> _quicklistInsert(quicklist *quicklist, quicklistEntry *entry,</span><br><span class="line">                                   <span class="keyword">void</span> *value, <span class="keyword">const</span> <span class="keyword">size_t</span> sz, <span class="keyword">int</span> after) &#123;</span><br><span class="line">    <span class="comment">// full 是判断entry所在的节点node中，是否可以直接插入value，不可以则置为1</span></span><br><span class="line">    <span class="comment">// full_next 是判断entry所在的节点的下一个节点，是否可以直接插入value，不可以则置为1</span></span><br><span class="line">    <span class="comment">// full_prev 是判断entry所在的节点的上一个节点，是否可以直接插入value，不可以则置为1</span></span><br><span class="line">    <span class="comment">// at_tail 表示entry是否在node中是最后一个元素项</span></span><br><span class="line">    <span class="comment">// at_head 表示entry是否在node中是第一个元素项</span></span><br><span class="line">    <span class="keyword">int</span> full = <span class="number">0</span>, at_tail = <span class="number">0</span>, at_head = <span class="number">0</span>, full_next = <span class="number">0</span>, full_prev = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> fill = quicklist-&gt;fill;</span><br><span class="line">    <span class="comment">// 获取entry所在的快速列表节点</span></span><br><span class="line">    quicklistNode *node = entry-&gt;node;</span><br><span class="line">    quicklistNode *new_node = <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!node) &#123;</span><br><span class="line">        <span class="comment">// 如果指定的entry 并没有节点，那么创建一个并插入</span></span><br><span class="line">        <span class="comment">// 这里应该是默认为，当传入的`node`为NULL时，quicklist中是没有节点的</span></span><br><span class="line">        <span class="comment">// 可以看__quicklistInsertNode()函数中的处理，它并没有考虑quicklist-&gt;len &gt; 0 且 node 为 NULL的状态</span></span><br><span class="line">        <span class="comment">/* we have no reference node, so let's create only node in the list */</span></span><br><span class="line">        D(<span class="string">"No node given!"</span>);</span><br><span class="line">        new_node = quicklistCreateNode();</span><br><span class="line">        new_node-&gt;zl = ziplistPush(ziplistNew(), value, sz, ZIPLIST_HEAD);</span><br><span class="line">        __quicklistInsertNode(quicklist, <span class="literal">NULL</span>, new_node, after);</span><br><span class="line">        new_node-&gt;count++;</span><br><span class="line">        quicklist-&gt;count++;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Populate accounting flags for easier boolean checks later */</span></span><br><span class="line">    <span class="comment">// 判断节点node是否可以让value插入到它的压缩列表中</span></span><br><span class="line">    <span class="keyword">if</span> (!_quicklistNodeAllowInsert(node, fill, sz)) &#123;</span><br><span class="line">        D(<span class="string">"Current node is full with count %d with requested fill %lu"</span>,</span><br><span class="line">          node-&gt;count, fill);</span><br><span class="line">        full = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 如果插在节点后，而且元素项entry恰好是最后一个元素</span></span><br><span class="line">    <span class="comment">// 那么检查节点node的下一个节点，是否可以让value插入到它的压缩列表中</span></span><br><span class="line">    <span class="keyword">if</span> (after &amp;&amp; (entry-&gt;offset == node-&gt;count)) &#123;</span><br><span class="line">        D(<span class="string">"At Tail of current ziplist"</span>);</span><br><span class="line">        at_tail = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">if</span> (!_quicklistNodeAllowInsert(node-&gt;next, fill, sz)) &#123;</span><br><span class="line">            D(<span class="string">"Next node is full too."</span>);</span><br><span class="line">            full_next = <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果插在节点前，而且元素项entry恰好是第一个元素</span></span><br><span class="line">    <span class="comment">// 那么检查节点node的上一个节点，是否可以让value插入到它的压缩列表中</span></span><br><span class="line">    <span class="keyword">if</span> (!after &amp;&amp; (entry-&gt;offset == <span class="number">0</span>)) &#123;</span><br><span class="line">        D(<span class="string">"At Head"</span>);</span><br><span class="line">        at_head = <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">if</span> (!_quicklistNodeAllowInsert(node-&gt;prev, fill, sz)) &#123;</span><br><span class="line">            D(<span class="string">"Prev node is full too."</span>);</span><br><span class="line">            full_prev = <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Now determine where and how to insert the new element */</span></span><br><span class="line">    <span class="keyword">if</span> (!full &amp;&amp; after) &#123;</span><br><span class="line">        <span class="comment">// 压缩列表可以插入，且插入entry之后</span></span><br><span class="line">        D(<span class="string">"Not full, inserting after current position."</span>);</span><br><span class="line">        <span class="comment">// 尝试解压缩LZF的数据(该函数会判断node中的数据是否已压缩，所以直接调用)</span></span><br><span class="line">        quicklistDecompressNodeForUse(node);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 压缩列表插入</span></span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">char</span> *next = ziplistNext(node-&gt;zl, entry-&gt;zi);</span><br><span class="line">        <span class="keyword">if</span> (next == <span class="literal">NULL</span>) &#123;</span><br><span class="line">            node-&gt;zl = ziplistPush(node-&gt;zl, value, sz, ZIPLIST_TAIL);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            node-&gt;zl = ziplistInsert(node-&gt;zl, next, value, sz);</span><br><span class="line">        &#125;</span><br><span class="line">        node-&gt;count++;</span><br><span class="line">        <span class="comment">// 更新node的字节数</span></span><br><span class="line">        quicklistNodeUpdateSz(node);</span><br><span class="line">        <span class="comment">// 重新压缩</span></span><br><span class="line">        quicklistRecompressOnly(quicklist, node);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!full &amp;&amp; !after) &#123;</span><br><span class="line">        <span class="comment">// 压缩列表可以插入，且插入entry之前</span></span><br><span class="line">        D(<span class="string">"Not full, inserting before current position."</span>);</span><br><span class="line">        <span class="comment">// 尝试解压缩LZF的数据(该函数会判断node中的数据是否已压缩，所以直接调用)</span></span><br><span class="line">        quicklistDecompressNodeForUse(node);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 压缩列表插入</span></span><br><span class="line">        node-&gt;zl = ziplistInsert(node-&gt;zl, entry-&gt;zi, value, sz);</span><br><span class="line">        node-&gt;count++;</span><br><span class="line">        <span class="comment">// 更新node的字节数</span></span><br><span class="line">        quicklistNodeUpdateSz(node);</span><br><span class="line">        <span class="comment">// 重新压缩</span></span><br><span class="line">        quicklistRecompressOnly(quicklist, node);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (full &amp;&amp; at_tail &amp;&amp; node-&gt;next &amp;&amp; !full_next &amp;&amp; after) &#123;</span><br><span class="line">        <span class="comment">/* If we are: at tail, next has free space, and inserting after:</span></span><br><span class="line"><span class="comment">         *   - insert entry at head of next node. */</span></span><br><span class="line">        <span class="comment">// 如果node中压缩列表无法插入</span></span><br><span class="line">        <span class="comment">// 且 entry 是尾元素项</span></span><br><span class="line">        <span class="comment">// 且 node 存在下一个节点</span></span><br><span class="line">        <span class="comment">// 且 下一个节点可以插入</span></span><br><span class="line">        <span class="comment">// 且 新元素项是插入到 entry 之后的</span></span><br><span class="line">        D(<span class="string">"Full and tail, but next isn't full; inserting next node head"</span>);</span><br><span class="line">        new_node = node-&gt;next;</span><br><span class="line">        quicklistDecompressNodeForUse(new_node);</span><br><span class="line">        new_node-&gt;zl = ziplistPush(new_node-&gt;zl, value, sz, ZIPLIST_HEAD);</span><br><span class="line">        new_node-&gt;count++;</span><br><span class="line">        quicklistNodeUpdateSz(new_node);</span><br><span class="line">        quicklistRecompressOnly(quicklist, new_node);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (full &amp;&amp; at_head &amp;&amp; node-&gt;prev &amp;&amp; !full_prev &amp;&amp; !after) &#123;</span><br><span class="line">        <span class="comment">/* If we are: at head, previous has free space, and inserting before:</span></span><br><span class="line"><span class="comment">         *   - insert entry at tail of previous node. */</span></span><br><span class="line">        <span class="comment">// 如果node中压缩列表无法插入</span></span><br><span class="line">        <span class="comment">// 且 entry 是头元素项</span></span><br><span class="line">        <span class="comment">// 且 node 存在上一个节点</span></span><br><span class="line">        <span class="comment">// 且 上一个节点可以插入</span></span><br><span class="line">        <span class="comment">// 且 新元素项是插入到 entry 之前的</span></span><br><span class="line">        D(<span class="string">"Full and head, but prev isn't full, inserting prev node tail"</span>);</span><br><span class="line">        new_node = node-&gt;prev;</span><br><span class="line">        quicklistDecompressNodeForUse(new_node);</span><br><span class="line">        new_node-&gt;zl = ziplistPush(new_node-&gt;zl, value, sz, ZIPLIST_TAIL);</span><br><span class="line">        new_node-&gt;count++;</span><br><span class="line">        quicklistNodeUpdateSz(new_node);</span><br><span class="line">        quicklistRecompressOnly(quicklist, new_node);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (full &amp;&amp; ((at_tail &amp;&amp; node-&gt;next &amp;&amp; full_next &amp;&amp; after) ||</span><br><span class="line">                        (at_head &amp;&amp; node-&gt;prev &amp;&amp; full_prev &amp;&amp; !after))) &#123;</span><br><span class="line">        <span class="comment">/* If we are: full, and our prev/next is full, then:</span></span><br><span class="line"><span class="comment">         *   - create new node and attach to quicklist */</span></span><br><span class="line">        <span class="comment">// 如果 node 中压缩列表无法插入</span></span><br><span class="line">        <span class="comment">// （entry在对列尾 且 node存在下一个节点 且 下一个节点压缩列表无法插入 且 是插入entry之后）</span></span><br><span class="line">        <span class="comment">// 或者</span></span><br><span class="line">        <span class="comment">// （entry在对列头 且 node存在上一个节点 且 上一个节点压缩列表无法插入 且 是插入entry之前）</span></span><br><span class="line">        D(<span class="string">"\tprovisioning new node..."</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 新建一个节点</span></span><br><span class="line">        new_node = quicklistCreateNode();</span><br><span class="line">        new_node-&gt;zl = ziplistPush(ziplistNew(), value, sz, ZIPLIST_HEAD);</span><br><span class="line">        new_node-&gt;count++;</span><br><span class="line">        quicklistNodeUpdateSz(new_node);</span><br><span class="line">        <span class="comment">// 新节点插入到node节点的前或者后(由after决定)</span></span><br><span class="line">        __quicklistInsertNode(quicklist, node, new_node, after);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (full) &#123;</span><br><span class="line">        <span class="comment">/* else, node is full we need to split it. */</span></span><br><span class="line">        <span class="comment">/* covers both after and !after cases */</span></span><br><span class="line">        <span class="comment">// 以上都不是，而且node中的压缩列表满了，则需要将node拆分为2个node</span></span><br><span class="line">        D(<span class="string">"\tsplitting node..."</span>);</span><br><span class="line">        quicklistDecompressNodeForUse(node);</span><br><span class="line">        <span class="comment">// 拆分为2个node</span></span><br><span class="line">        new_node = _quicklistSplitNode(node, entry-&gt;offset, after);</span><br><span class="line">        <span class="comment">// 将vale添加到new_node中</span></span><br><span class="line">        new_node-&gt;zl = ziplistPush(new_node-&gt;zl, value, sz,</span><br><span class="line">                                   after ? ZIPLIST_HEAD : ZIPLIST_TAIL);</span><br><span class="line">        new_node-&gt;count++;</span><br><span class="line">        quicklistNodeUpdateSz(new_node);</span><br><span class="line">        <span class="comment">// 将new_node插入到node对应文职</span></span><br><span class="line">        __quicklistInsertNode(quicklist, node, new_node, after);</span><br><span class="line">        _quicklistMergeNodes(quicklist, node);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    quicklist-&gt;count++;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h2 id="快速列表API"><a href="#快速列表API" class="headerlink" title="快速列表API"></a>快速列表API</h2><table>
+<thead>
+<tr>
+<th>函数</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>quicklist *quicklistCreate(void)</code></td>
+<td>创建一个新的快速列表。</td>
+</tr>
+<tr>
+<td><code>quicklist *quicklistNew(int fill, int compress)</code></td>
+<td>使用指定的<code>fill</code>和<code>compress</code>创建一个新的快速列表。</td>
+</tr>
+<tr>
+<td><code>void quicklistSetCompressDepth(quicklist *quicklist, int depth)</code></td>
+<td>设置<code>quicklist</code>的<code>depth</code>，设置后并不会执行压缩/解压缩操作，只改变<code>quicklist</code>中的<code>depth</code>属性值。</td>
+</tr>
+<tr>
+<td><code>void quicklistSetFill(quicklist *quicklist, int fill)</code></td>
+<td>设置<code>quicklist</code>的<code>fill</code>属性值，设置后并不会对列表进行调整。</td>
+</tr>
+<tr>
+<td><code>void quicklistSetOptions(quicklist *quicklist, int fill, int depth)</code></td>
+<td>设置<code>quicklist</code>的<code>fill</code>和<code>depth</code>属性值，设置后并不会对列表进行调整。</td>
+</tr>
+<tr>
+<td><code>void quicklistRelease(quicklist *quicklist)</code></td>
+<td>释放整个<code>quicklist</code>列表</td>
+</tr>
+<tr>
+<td><code>int quicklistPushHead(quicklist *quicklist, void *value, const size_t sz)</code></td>
+<td>将大小为<code>sz</code>的新选项<code>value</code>添加到<code>quicklist</code>的头中，如果函数返回<code>0</code>表示使用已经存在的节点，如果返回<code>1</code>表示新建头节点。</td>
+</tr>
+<tr>
+<td><code>int quicklistPushTail(quicklist *quicklist, void *value, const size_t sz)</code></td>
+<td>将大小为<code>sz</code>的新选项<code>value</code>添加到<code>quicklist</code>的尾中，如果函数返回<code>0</code>表示使用已经存在的节点，如果返回<code>1</code>表示新建尾节点。</td>
+</tr>
+<tr>
+<td><code>void quicklistPush(quicklist *quicklist, void *value, const size_t sz,int where)</code></td>
+<td>将大小为<code>sz</code>的新选项<code>value</code>添加到<code>quicklist</code>的最前或最末，由参数<code>where</code>决定位置，<code>0</code>表示添加到头，<code>-1</code>表示添加到尾。</td>
+</tr>
+<tr>
+<td><code>void quicklistAppendZiplist(quicklist *quicklist, unsigned char *zl)</code></td>
+<td>为压缩列表<code>*zl</code>创建一个新的节点，并将这个节点添加到<code>quicklist</code>的尾。</td>
+</tr>
+<tr>
+<td><code>quicklist *quicklistAppendValuesFromZiplist(quicklist *quicklist, unsigned char *zl)</code></td>
+<td>在压缩列表<code>zl</code>中读取数据项，并将这些数据项添加到<code>quicklist</code>的尾。</td>
+</tr>
+<tr>
+<td><code>quicklist *quicklistCreateFromZiplist(int fill, int compress, unsigned char *zl)</code></td>
+<td>从指定的压缩列表<code>*zl</code>中，创建一个新的quicklist。</td>
+</tr>
+<tr>
+<td><code>void quicklistInsertAfter(quicklist *quicklist, quicklistEntry *node, void *value, const size_t sz)</code></td>
+<td>将大小为<code>sz</code>的值<code>value</code>插入到快速列表<code>quicklist</code>指定数据项节点<code>node</code>后</td>
+</tr>
+<tr>
+<td><code>void quicklistInsertBefore(quicklist *quicklist, quicklistEntry *node, void *value, const size_t sz)</code></td>
+<td>将大小为<code>sz</code>的值<code>value</code>插入到快速列表<code>quicklist</code>指定数据项节点<code>node</code>前</td>
+</tr>
+<tr>
+<td><code>int quicklistReplaceAtIndex(quicklist *quicklist, long index, void *data, int sz)</code></td>
+<td>将长度为<code>sz</code>的数据<code>data</code>插入到快速列表<code>quicklist</code>中的指定位置<code>index</code></td>
+</tr>
+<tr>
+<td><code>int quicklistDelRange(quicklist *quicklist, const long start, const long stop)</code></td>
+<td>删除<code>quicklist</code>中指定<code>start</code> ~ <code>end</code>范围的数据项</td>
+</tr>
+<tr>
+<td><code>quicklist *quicklistDup(quicklist *orig)</code></td>
+<td>复制一个新的快速列表并返回</td>
+</tr>
+<tr>
+<td><code>int quicklistIndex(const quicklist *quicklist, const long long index, quicklistEntry *entry)</code></td>
+<td>返回<code>quicklist</code>中指定位置<code>index</code>数据项的值，并写入<code>*entry</code>中，如果找到元素则返回1，否则返回0</td>
+</tr>
+<tr>
+<td><code>void quicklistRotate(quicklist *quicklist)</code></td>
+<td>旋转快速列表<code>quicklist</code></td>
+</tr>
+<tr>
+<td><code>int quicklistPopCustom(quicklist *quicklist, int where, unsigned char **data, unsigned int *sz, long long *sval, void *(*saver)(unsigned char *data, unsigned int sz))</code></td>
+<td>在<code>quicklist</code>中弹出(pop)一个元素项，并写入<code>data</code>中，如果这个元素是<code>long long</code>则写入<code>sval</code>中，<code>where</code>为0表示在头弹出，其他表示在尾弹出。</td>
+</tr>
+<tr>
+<td><code>int quicklistPop(quicklist *quicklist, int where, unsigned char **data, unsigned int *sz, long long *slong)</code></td>
+<td>在<code>quicklist</code>中弹出(pop)一个元素项，并写入<code>data</code>中，<code>where</code>为0表示在头弹出，其他表示在尾弹出。</td>
+</tr>
+<tr>
+<td><code>unsigned long quicklistCount(const quicklist *ql)</code></td>
+<td>返回快速列表<code>ql</code>中元素项的个数</td>
+</tr>
+<tr>
+<td><code>int quicklistCompare(unsigned char *p1, unsigned char *p2, int p2_len)</code></td>
+<td>对比压缩列表的内容。</td>
+</tr>
+<tr>
+<td><code>size_t quicklistGetLzf(const quicklistNode *node, void **data)</code></td>
+<td>从<code>*node</code>中获取LZF压缩数据，并写入<code>data</code>中，返回值为<code>data</code>的长度。</td>
+</tr>
+</tbody>
+</table>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/09/16/Redis源码阅读笔记-压缩列表结构/" rel="next" title="Redis源码阅读笔记-压缩列表结构">
+                <i class="fa fa-chevron-left"></i> Redis源码阅读笔记-压缩列表结构
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/09/22/Redis源码阅读笔记-对象及其类型和编码/" rel="prev" title="Redis源码阅读笔记-对象及其类型和编码">
+                Redis源码阅读笔记-对象及其类型和编码 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#快速列表"><span class="nav-number">1.</span> <span class="nav-text">快速列表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#特点"><span class="nav-number">2.</span> <span class="nav-text">特点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#代码结构"><span class="nav-number">3.</span> <span class="nav-text">代码结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#快速列表结构"><span class="nav-number">3.1.</span> <span class="nav-text">快速列表结构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#list-max-ziplist-size"><span class="nav-number">3.1.1.</span> <span class="nav-text">list-max-ziplist-size</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#list-compress-depth"><span class="nav-number">3.1.2.</span> <span class="nav-text">list-compress-depth</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#快速列表节点结构"><span class="nav-number">3.2.</span> <span class="nav-text">快速列表节点结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LZF压缩数据结构"><span class="nav-number">3.3.</span> <span class="nav-text">LZF压缩数据结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#表示数据项结构"><span class="nav-number">3.4.</span> <span class="nav-text">表示数据项结构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#部分代码解析"><span class="nav-number">4.</span> <span class="nav-text">部分代码解析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#快速列表API"><span class="nav-number">5.</span> <span class="nav-text">快速列表API</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

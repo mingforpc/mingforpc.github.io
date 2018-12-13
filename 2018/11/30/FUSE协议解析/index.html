@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="由于以前有项目是用到FUSE，将S3等对象存储映射为文件存储的，但我不是负责那一块，所以一直只是知道FUSE是个什么东西，而没有用过。刚好趁着没工作的这段时间，学习Golang，顺便把FUSE也了解下，实现了一个简易版的libfuse: https://github.com/mingforpc/fuse-go和一个可以将HDFS Mount到本地文件夹的程序: https://github.com">
+<meta property="og:type" content="article">
+<meta property="og:title" content="FUSE协议解析">
+<meta property="og:url" content="http://yoursite.com/2018/11/30/FUSE协议解析/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="由于以前有项目是用到FUSE，将S3等对象存储映射为文件存储的，但我不是负责那一块，所以一直只是知道FUSE是个什么东西，而没有用过。刚好趁着没工作的这段时间，学习Golang，顺便把FUSE也了解下，实现了一个简易版的libfuse: https://github.com/mingforpc/fuse-go和一个可以将HDFS Mount到本地文件夹的程序: https://github.com">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/2018/11/30/FUSE协议解析/流程.jpg">
+<meta property="og:updated_time" content="2018-12-13T15:55:57.015Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="FUSE协议解析">
+<meta name="twitter:description" content="由于以前有项目是用到FUSE，将S3等对象存储映射为文件存储的，但我不是负责那一块，所以一直只是知道FUSE是个什么东西，而没有用过。刚好趁着没工作的这段时间，学习Golang，顺便把FUSE也了解下，实现了一个简易版的libfuse: https://github.com/mingforpc/fuse-go和一个可以将HDFS Mount到本地文件夹的程序: https://github.com">
+<meta name="twitter:image" content="http://yoursite.com/2018/11/30/FUSE协议解析/流程.jpg">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/11/30/FUSE协议解析/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>FUSE协议解析 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/11/30/FUSE协议解析/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">FUSE协议解析
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-11-30 14:00:00" itemprop="dateCreated datePublished" datetime="2018-11-30T14:00:00+08:00">2018-11-30</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 23:55:57" itemprop="dateModified" datetime="2018-12-13T23:55:57+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/系统/" itemprop="url" rel="index"><span itemprop="name">系统</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/系统/FUSE/" itemprop="url" rel="index"><span itemprop="name">FUSE</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>由于以前有项目是用到FUSE，将S3等对象存储映射为文件存储的，但我不是负责那一块，所以一直只是知道FUSE是个什么东西，而没有用过。刚好趁着没工作的这段时间，学习Golang，顺便把FUSE也了解下，实现了一个简易版的libfuse: <a href="https://github.com/mingforpc/fuse-go" target="_blank" rel="noopener">https://github.com/mingforpc/fuse-go</a>和一个可以将HDFS Mount到本地文件夹的程序: <a href="https://github.com/mingforpc/hadoop-fs" target="_blank" rel="noopener">https://github.com/mingforpc/hadoop-fs</a>。</p>
+<p>由于刚学并整理，如有遗漏或者错误！请拼命指出，谢谢！</p>
+<h2 id="什么是FUSE"><a href="#什么是FUSE" class="headerlink" title="什么是FUSE"></a>什么是FUSE</h2><p>FUSE的全称是Filesystem in Userspace，即用户空间文件系统，是系统内核提供的一个功能，使得可以在用户态下实现一个自定义的文件系统。比如CEPH和GlusterFS等都有使用到FUSE。</p>
+<p>而<a href="https://github.com/libfuse/libfuse" target="_blank" rel="noopener">libfuse</a>则是提供给用户态下的开发包。</p>
+<h2 id="FUSE是怎么交互的"><a href="#FUSE是怎么交互的" class="headerlink" title="FUSE是怎么交互的"></a>FUSE是怎么交互的</h2><p>FUSE是通过读写<code>/dev/fuse</code>让用户态的文件系统进程和内核通信的。</p>
+<p><img src="/2018/11/30/FUSE协议解析/流程.jpg" alt="大概流程"></p>
+<p>程序需要先打开<code>/dev/fuse</code>，然后通过<code>mount()</code>将<code>/dev/fuse</code>的fd，进程的用户id和组id传入，进行文件系统的挂载。</p>
+<p>PS: <a href="https://github.com/libfuse/libfuse" target="_blank" rel="noopener">libfuse</a>通过自己写的fusermount程序(编译安装libfuse后会在<code>/bin/</code>下)，可以让我们实现的文件系统程序在非root权限下挂载，这部分我还不是很了解，我自己实现的go版libfuse也只是依赖于这个fusermount。</p>
+<h2 id="FUSE的指令号、对应的函数、请求格式与响应"><a href="#FUSE的指令号、对应的函数、请求格式与响应" class="headerlink" title="FUSE的指令号、对应的函数、请求格式与响应"></a>FUSE的指令号、对应的函数、请求格式与响应</h2><p>程序从<code>/dev/fuse</code>中读取请求，不需要担心像TCP有半包粘包等问题，一次读取一条请求。buffer不够大，会报异常。</p>
+<p>请求和响应，都是以二进制字节表示的，下文中的结构体只是为了方便看。</p>
+<h3 id="请求头"><a href="#请求头" class="headerlink" title="请求头"></a>请求头</h3><p>每个命令的前 40 bytes为请求头，转为Golang的结构体如下:</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Each query starts with a FuseInHeader</span></span><br><span class="line"><span class="keyword">type</span> FuseInHeader <span class="keyword">struct</span> &#123;</span><br><span class="line">	Len     <span class="keyword">uint32</span></span><br><span class="line">	Opcode  <span class="keyword">uint32</span></span><br><span class="line">	Unique  <span class="keyword">uint64</span></span><br><span class="line">	Nodeid  <span class="keyword">uint64</span></span><br><span class="line">	Uid     <span class="keyword">uint32</span></span><br><span class="line">	Gid     <span class="keyword">uint32</span></span><br><span class="line">	Pid     <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Len: 是整个请求的字节数长度，包括请求头后的具体内容</li>
+<li>Opcode: 请求的类型</li>
+<li>Unique: 该请求唯一标识，响应中要对应着该Unique</li>
+<li>Nodeid: 该请求针对的文件nodeid，目标文件或者文件夹的nodeid</li>
+<li>Uid: 对该文件/文件夹操作的进程的用户ID</li>
+<li>Gid: 对该文件/文件夹操作的进程的用户组ID</li>
+<li>Pid: 对该文件/文件夹操作的进程的进程ID</li>
+</ul>
+<h3 id="响应头"><a href="#响应头" class="headerlink" title="响应头"></a>响应头</h3><p>程序写入<code>/dev/fuse</code>的每个响应的前 16 bytes为响应头，转为Golang的结构体如下:</p>
+<figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseOutHeader <span class="keyword">struct</span> &#123;</span><br><span class="line">	Len    <span class="keyword">uint32</span></span><br><span class="line">	Error  <span class="keyword">int32</span></span><br><span class="line">	Unique <span class="keyword">uint64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Len: 是整个响应的字节数长度，包括响应头后的具体内容</li>
+<li>Error: 一个负数的错误码，成功返回0，其他对应着系统(<code>error.h</code>)的错误代码，但是为负数，每个操作的错误返回可以查看linux man中相应的函数</li>
+<li>Unique: 对应者请求的唯一标识</li>
+</ul>
+<h3 id="请求类型和具体结构"><a href="#请求类型和具体结构" class="headerlink" title="请求类型和具体结构"></a>请求类型和具体结构</h3><p>数字对应着请求中的<code>Opcode</code></p>
+<h5 id="FUSE-LOOKUP-1"><a href="#FUSE-LOOKUP-1" class="headerlink" title="FUSE_LOOKUP = 1"></a>FUSE_LOOKUP = 1</h5><p><code>lookup()</code>函数，Look up a directory entry by name and get its attributes.</p>
+<p>如解析所说，获取代请求头Nodeid文件夹下该名字的文件的属性，包含着 inode id等。</p>
+<h6 id="请求头后的实体"><a href="#请求头后的实体" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseLookupIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Name <span class="keyword">string</span> <span class="comment">// 字符串结尾的`\0`会计算到长度中，解析时需注意</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Name: 文件名</li>
+</ul>
+<h6 id="响应头的实体"><a href="#响应头的实体" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseEntryOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	NodeId         <span class="keyword">uint64</span> <span class="comment">/* Inode ID */</span></span><br><span class="line">	Generation     <span class="keyword">uint64</span> <span class="comment">/* Inode generation: nodeid:gen must be unique for the fs's lifetime */</span></span><br><span class="line">	EntryValid     <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the name */</span></span><br><span class="line">	AttrValid      <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the attributes */</span></span><br><span class="line">	EntryValidNsec <span class="keyword">uint32</span></span><br><span class="line">	AttrValidNsec  <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Attr FuseAttr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseAttr <span class="keyword">struct</span> &#123;</span><br><span class="line">	Ino       <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint64</span></span><br><span class="line">	Blocks    <span class="keyword">uint64</span></span><br><span class="line">	Atime     <span class="keyword">uint64</span></span><br><span class="line">	Mtime     <span class="keyword">uint64</span></span><br><span class="line">	Ctime     <span class="keyword">uint64</span></span><br><span class="line">	AtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	MtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	CtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	Mode      <span class="keyword">uint32</span></span><br><span class="line">	Nlink     <span class="keyword">uint32</span></span><br><span class="line">	Uid       <span class="keyword">uint32</span></span><br><span class="line">	Gid       <span class="keyword">uint32</span></span><br><span class="line">	Rdev      <span class="keyword">uint32</span></span><br><span class="line">	Blksize   <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>NodeId: 文件的Inode ID </li>
+<li>Generation: 同一个文件， nodeid和gen的组合，必须在整个文件系统的生命周期中唯一</li>
+<li>EntryValid: 对于文件的Name的缓存时间，单位是秒</li>
+<li>EntryValidNsec: 同上，但是该属性表示毫秒部分</li>
+<li>AttrValid: 对于文件的属性的缓存时间，单位是秒</li>
+<li>AttrValidNsec: 同上，但是该属性表示毫秒部分</li>
+<li>Attr: 该文件的属性，可以对应属性的意义可以参考文件属性<code>stat</code></li>
+</ul>
+<h5 id="FUSE-FORGET-2"><a href="#FUSE-FORGET-2" class="headerlink" title="FUSE_FORGET = 2"></a>FUSE_FORGET = 2</h5><p><code>forget()</code>函数，Forget about an inode</p>
+<p><strong>不需要</strong>返回任何响应的操作。</p>
+<h6 id="请求头后的实体-1"><a href="#请求头后的实体-1" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// forget (should not send any reply)</span></span><br><span class="line"><span class="keyword">type</span> FuseForgetIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Nlookup <span class="keyword">uint64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-GETATTR-3"><a href="#FUSE-GETATTR-3" class="headerlink" title="FUSE_GETATTR = 3"></a>FUSE_GETATTR = 3</h5><p><code>getattr()</code>函数，Get file attributes.</p>
+<h6 id="请求头后的实体-2"><a href="#请求头后的实体-2" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseGetattrIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	GetattrFlags <span class="keyword">uint32</span></span><br><span class="line">	Dummy        <span class="keyword">uint32</span></span><br><span class="line">	Fh           <span class="keyword">uint64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-1"><a href="#响应头的实体-1" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseAttrOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	AttrValid     <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the attributes */</span></span><br><span class="line">	AttrValidNsec <span class="keyword">uint32</span></span><br><span class="line">	Dummp         <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Attr FuseAttr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseAttr <span class="keyword">struct</span> &#123;</span><br><span class="line">	Ino       <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint64</span></span><br><span class="line">	Blocks    <span class="keyword">uint64</span></span><br><span class="line">	Atime     <span class="keyword">uint64</span></span><br><span class="line">	Mtime     <span class="keyword">uint64</span></span><br><span class="line">	Ctime     <span class="keyword">uint64</span></span><br><span class="line">	AtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	MtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	CtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	Mode      <span class="keyword">uint32</span></span><br><span class="line">	Nlink     <span class="keyword">uint32</span></span><br><span class="line">	Uid       <span class="keyword">uint32</span></span><br><span class="line">	Gid       <span class="keyword">uint32</span></span><br><span class="line">	Rdev      <span class="keyword">uint32</span></span><br><span class="line">	Blksize   <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>AttrValid: 属性的有效时间，单位秒</li>
+<li>AttrValidNsec: 同上，但是该属性表示毫秒部分</li>
+<li>Attr: 该文件的属性，可以对应属性的意义可以参考文件属性<code>stat</code></li>
+</ul>
+<h5 id="FUSE-SETATTR-4"><a href="#FUSE-SETATTR-4" class="headerlink" title="FUSE_SETATTR = 4"></a>FUSE_SETATTR = 4</h5><p><code>setattr()</code>函数，Set file attributes</p>
+<h6 id="请求头后的实体-3"><a href="#请求头后的实体-3" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseSetattrIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Valid     <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">	Fh        <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint64</span></span><br><span class="line">	LockOwner <span class="keyword">uint64</span></span><br><span class="line">	Atime     <span class="keyword">uint64</span></span><br><span class="line">	Mtime     <span class="keyword">uint64</span></span><br><span class="line">	Ctime     <span class="keyword">uint64</span></span><br><span class="line">	AtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	MtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	CtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	Mode      <span class="keyword">uint32</span></span><br><span class="line">	Unused4   <span class="keyword">uint32</span></span><br><span class="line">	Uid       <span class="keyword">uint32</span></span><br><span class="line">	Gid       <span class="keyword">uint32</span></span><br><span class="line">	Unused5   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Valid: 用来标识需要给文件设置哪些属性的:<ul>
+<li><code>FUSE_SET_ATTR_MODE = (1 &lt;&lt; 0)</code></li>
+<li><code>FUSE_SET_ATTR_UID = (1 &lt;&lt; 1)</code></li>
+<li><code>FUSE_SET_ATTR_GID = (1 &lt;&lt; 2)</code></li>
+<li><code>FUSE_SET_ATTR_SIZE = (1 &lt;&lt; 3)</code></li>
+<li><code>FUSE_SET_ATTR_ATIME = (1 &lt;&lt; 4)</code></li>
+<li><code>FUSE_SET_ATTR_MTIME = (1 &lt;&lt; 5)</code></li>
+<li><code>FUSE_SET_ATTR_ATIME_NOW = (1 &lt;&lt; 7)</code></li>
+<li><code>FUSE_SET_ATTR_MTIME_NOW = (1 &lt;&lt; 8)</code></li>
+<li><code>FUSE_SET_ATTR_CTIME = (1 &lt;&lt; 10)</code></li>
+</ul>
+</li>
+<li>Size: 文件的大小</li>
+<li>Atime 和 AtimeNsec: 文件的 access time</li>
+<li>Mtime 和 MtimeNsec: 文件的 modification time</li>
+<li>Ctime 和 CtimeNsec: 文件的 status time</li>
+<li>Mode: 文件的模式(文件类型和权限)</li>
+<li>Uid: 文件所属的用户</li>
+<li>Gid: 文件所属的用户组</li>
+</ul>
+<h6 id="响应头的实体-2"><a href="#响应头的实体-2" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseAttrOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	AttrValid     <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the attributes */</span></span><br><span class="line">	AttrValidNsec <span class="keyword">uint32</span></span><br><span class="line">	Dummp         <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Attr FuseAttr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseAttr <span class="keyword">struct</span> &#123;</span><br><span class="line">	Ino       <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint64</span></span><br><span class="line">	Blocks    <span class="keyword">uint64</span></span><br><span class="line">	Atime     <span class="keyword">uint64</span></span><br><span class="line">	Mtime     <span class="keyword">uint64</span></span><br><span class="line">	Ctime     <span class="keyword">uint64</span></span><br><span class="line">	AtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	MtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	CtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	Mode      <span class="keyword">uint32</span></span><br><span class="line">	Nlink     <span class="keyword">uint32</span></span><br><span class="line">	Uid       <span class="keyword">uint32</span></span><br><span class="line">	Gid       <span class="keyword">uint32</span></span><br><span class="line">	Rdev      <span class="keyword">uint32</span></span><br><span class="line">	Blksize   <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-READLINK-5"><a href="#FUSE-READLINK-5" class="headerlink" title="FUSE_READLINK = 5"></a>FUSE_READLINK = 5</h5><p><code>readlink()</code>函数，Read symbolic link</p>
+<h6 id="请求头后的实体-4"><a href="#请求头后的实体-4" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><p>FUSE_READLINK 请求头后没有实体。</p>
+<h6 id="响应头的实体-3"><a href="#响应头的实体-3" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReadlinkOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Path <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-SYMLINK-6"><a href="#FUSE-SYMLINK-6" class="headerlink" title="FUSE_SYMLINK = 6"></a>FUSE_SYMLINK = 6</h5><p><code>symlink()</code>函数，Create a symbolic link</p>
+<h6 id="请求头后的实体-5"><a href="#请求头后的实体-5" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseSymlinkIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Name <span class="keyword">string</span></span><br><span class="line"></span><br><span class="line">	LinkName <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Name 和 LinkName 之间会以 ‘\0’分隔。</p>
+<ul>
+<li>Name: 软连接文件的文件名</li>
+<li>LinkName: 软连接所连接的文件名</li>
+</ul>
+<h6 id="响应头的实体-4"><a href="#响应头的实体-4" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseEntryOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	NodeId         <span class="keyword">uint64</span> <span class="comment">/* Inode ID */</span></span><br><span class="line">	Generation     <span class="keyword">uint64</span> <span class="comment">/* Inode generation: nodeid:gen must be unique for the fs's lifetime */</span></span><br><span class="line">	EntryValid     <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the name */</span></span><br><span class="line">	AttrValid      <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the attributes */</span></span><br><span class="line">	EntryValidNsec <span class="keyword">uint32</span></span><br><span class="line">	AttrValidNsec  <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Attr FuseAttr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseAttr <span class="keyword">struct</span> &#123;</span><br><span class="line">	Ino       <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint64</span></span><br><span class="line">	Blocks    <span class="keyword">uint64</span></span><br><span class="line">	Atime     <span class="keyword">uint64</span></span><br><span class="line">	Mtime     <span class="keyword">uint64</span></span><br><span class="line">	Ctime     <span class="keyword">uint64</span></span><br><span class="line">	AtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	MtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	CtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	Mode      <span class="keyword">uint32</span></span><br><span class="line">	Nlink     <span class="keyword">uint32</span></span><br><span class="line">	Uid       <span class="keyword">uint32</span></span><br><span class="line">	Gid       <span class="keyword">uint32</span></span><br><span class="line">	Rdev      <span class="keyword">uint32</span></span><br><span class="line">	Blksize   <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>属性见<code>lookup</code>中的。</p>
+<h5 id="FUSE-MKNOD-8"><a href="#FUSE-MKNOD-8" class="headerlink" title="FUSE_MKNOD = 8"></a>FUSE_MKNOD = 8</h5><p><code>mknod()</code>函数，Create file node</p>
+<h6 id="请求头后的实体-6"><a href="#请求头后的实体-6" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseMknodIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Mode    <span class="keyword">uint32</span></span><br><span class="line">	Rdev    <span class="keyword">uint32</span></span><br><span class="line">	Umask   <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Name <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-5"><a href="#响应头的实体-5" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseEntryOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	NodeId         <span class="keyword">uint64</span> <span class="comment">/* Inode ID */</span></span><br><span class="line">	Generation     <span class="keyword">uint64</span> <span class="comment">/* Inode generation: nodeid:gen must be unique for the fs's lifetime */</span></span><br><span class="line">	EntryValid     <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the name */</span></span><br><span class="line">	AttrValid      <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the attributes */</span></span><br><span class="line">	EntryValidNsec <span class="keyword">uint32</span></span><br><span class="line">	AttrValidNsec  <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Attr FuseAttr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseAttr <span class="keyword">struct</span> &#123;</span><br><span class="line">	Ino       <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint64</span></span><br><span class="line">	Blocks    <span class="keyword">uint64</span></span><br><span class="line">	Atime     <span class="keyword">uint64</span></span><br><span class="line">	Mtime     <span class="keyword">uint64</span></span><br><span class="line">	Ctime     <span class="keyword">uint64</span></span><br><span class="line">	AtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	MtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	CtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	Mode      <span class="keyword">uint32</span></span><br><span class="line">	Nlink     <span class="keyword">uint32</span></span><br><span class="line">	Uid       <span class="keyword">uint32</span></span><br><span class="line">	Gid       <span class="keyword">uint32</span></span><br><span class="line">	Rdev      <span class="keyword">uint32</span></span><br><span class="line">	Blksize   <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>属性见<code>lookup</code>中的。</p>
+<h5 id="FUSE-MKDIR-9"><a href="#FUSE-MKDIR-9" class="headerlink" title="FUSE_MKDIR = 9"></a>FUSE_MKDIR = 9</h5><p><code>mkdir()</code>函数，Create a directory</p>
+<h6 id="请求头后的实体-7"><a href="#请求头后的实体-7" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseMkdirIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Mode  <span class="keyword">uint32</span></span><br><span class="line">	Umask <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Name <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Mode: 目录的模式(包含文件类型和权限)</li>
+<li>Name: 要创建的目录的名称</li>
+</ul>
+<h6 id="响应头的实体-6"><a href="#响应头的实体-6" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseEntryOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	NodeId         <span class="keyword">uint64</span> <span class="comment">/* Inode ID */</span></span><br><span class="line">	Generation     <span class="keyword">uint64</span> <span class="comment">/* Inode generation: nodeid:gen must be unique for the fs's lifetime */</span></span><br><span class="line">	EntryValid     <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the name */</span></span><br><span class="line">	AttrValid      <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the attributes */</span></span><br><span class="line">	EntryValidNsec <span class="keyword">uint32</span></span><br><span class="line">	AttrValidNsec  <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Attr FuseAttr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseAttr <span class="keyword">struct</span> &#123;</span><br><span class="line">	Ino       <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint64</span></span><br><span class="line">	Blocks    <span class="keyword">uint64</span></span><br><span class="line">	Atime     <span class="keyword">uint64</span></span><br><span class="line">	Mtime     <span class="keyword">uint64</span></span><br><span class="line">	Ctime     <span class="keyword">uint64</span></span><br><span class="line">	AtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	MtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	CtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	Mode      <span class="keyword">uint32</span></span><br><span class="line">	Nlink     <span class="keyword">uint32</span></span><br><span class="line">	Uid       <span class="keyword">uint32</span></span><br><span class="line">	Gid       <span class="keyword">uint32</span></span><br><span class="line">	Rdev      <span class="keyword">uint32</span></span><br><span class="line">	Blksize   <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>属性见<code>lookup</code>中的。</p>
+<h5 id="FUSE-UNLINK-10"><a href="#FUSE-UNLINK-10" class="headerlink" title="FUSE_UNLINK = 10"></a>FUSE_UNLINK = 10</h5><p><code>unlink()</code>函数， Remove a directory</p>
+<h6 id="请求头后的实体-8"><a href="#请求头后的实体-8" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">type FuseUnlinkIn struct &#123;</span><br><span class="line">	Name string</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Name: 要删除的目录名字</li>
+</ul>
+<h6 id="响应头的实体-7"><a href="#响应头的实体-7" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p>无需响应实体，只需返回响应头</p>
+<h5 id="FUSE-RMDIR-11"><a href="#FUSE-RMDIR-11" class="headerlink" title="FUSE_RMDIR = 11"></a>FUSE_RMDIR = 11</h5><p><code>rmdir()</code>函数，Remove a directory</p>
+<h6 id="请求头后的实体-9"><a href="#请求头后的实体-9" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><p>参考<code>unlink()</code></p>
+<h6 id="响应头的实体-8"><a href="#响应头的实体-8" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p>参考<code>unlink()</code></p>
+<h5 id="FUSE-RENAME-12"><a href="#FUSE-RENAME-12" class="headerlink" title="FUSE_RENAME = 12"></a>FUSE_RENAME = 12</h5><p><code>rename()</code>函数，Rename a file</p>
+<h6 id="请求头后的实体-10"><a href="#请求头后的实体-10" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseRenameIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	NewDir <span class="keyword">uint64</span></span><br><span class="line"></span><br><span class="line">	OldName <span class="keyword">string</span></span><br><span class="line"></span><br><span class="line">	NewName <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>NewDir: 新目录的 inode id（旧目录的inode id在请求头中）</li>
+<li>OldName: 旧文件名</li>
+<li>NewName: 新文件名</li>
+</ul>
+<h6 id="响应头的实体-9"><a href="#响应头的实体-9" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p>无需响应实体，只需返回响应头</p>
+<h5 id="FUSE-LINK-13"><a href="#FUSE-LINK-13" class="headerlink" title="FUSE_LINK = 13"></a>FUSE_LINK = 13</h5><p><code>link()</code>函数， Create a hard link</p>
+<h6 id="请求头后的实体-11"><a href="#请求头后的实体-11" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseLinkIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	OldNodeid <span class="keyword">uint64</span></span><br><span class="line">	NewName <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-10"><a href="#响应头的实体-10" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReadlinkOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Path <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-OPEN-14"><a href="#FUSE-OPEN-14" class="headerlink" title="FUSE_OPEN = 14"></a>FUSE_OPEN = 14</h5><p><code>open()</code>函数，Open a file</p>
+<h6 id="请求头后的实体-12"><a href="#请求头后的实体-12" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseOpenIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Flags  <span class="keyword">uint32</span></span><br><span class="line">	Unused <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-11"><a href="#响应头的实体-11" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseOpenOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh        <span class="keyword">uint64</span></span><br><span class="line">	OpenFlags <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-READ-15"><a href="#FUSE-READ-15" class="headerlink" title="FUSE_READ = 15"></a>FUSE_READ = 15</h5><p><code>read()</code>函数，Read data</p>
+<h6 id="请求头后的实体-13"><a href="#请求头后的实体-13" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReadIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh        <span class="keyword">uint64</span></span><br><span class="line">	Offset    <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint32</span></span><br><span class="line">	ReadFlags <span class="keyword">uint32</span></span><br><span class="line">	LockOwner <span class="keyword">uint64</span></span><br><span class="line">	Flags     <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Offset: 读取开始位置，相对于文件开头的偏移量</li>
+<li>Size: 内核缓存区的大小(读取的数据大小不能超过这个限制)</li>
+</ul>
+<h6 id="响应头的实体-12"><a href="#响应头的实体-12" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReadOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Content []<span class="keyword">byte</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在响应头后紧跟着读取的二进制数据</p>
+<h5 id="FUSE-WRITE-16"><a href="#FUSE-WRITE-16" class="headerlink" title="FUSE_WRITE = 16"></a>FUSE_WRITE = 16</h5><p><code>write()</code>函数，Write data</p>
+<h6 id="请求头后的实体-14"><a href="#请求头后的实体-14" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseWriteIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh         <span class="keyword">uint64</span></span><br><span class="line">	Offset     <span class="keyword">uint64</span></span><br><span class="line">	Size       <span class="keyword">uint32</span></span><br><span class="line">	WriteFlags <span class="keyword">uint32</span></span><br><span class="line">	LockOwner  <span class="keyword">uint64</span></span><br><span class="line">	Flags      <span class="keyword">uint32</span></span><br><span class="line">	Padding    <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Buf []<span class="keyword">byte</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Offset: 开始写入数据位置的偏移量</li>
+<li>Size: 写入数据的字节数</li>
+<li>Buf: 写入的数据</li>
+</ul>
+<h6 id="响应头的实体-13"><a href="#响应头的实体-13" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseWriteOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Size    <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Size: 成功写入数据的字节数</li>
+</ul>
+<h5 id="FUSE-STATFS-17"><a href="#FUSE-STATFS-17" class="headerlink" title="FUSE_STATFS = 17"></a>FUSE_STATFS = 17</h5><p><code>statfs()</code>函数，Get file system statistics</p>
+<h6 id="请求头后的实体-15"><a href="#请求头后的实体-15" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><p><code>statfs</code>只有请求头</p>
+<h6 id="响应头的实体-14"><a href="#响应头的实体-14" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseStatfs <span class="keyword">struct</span> &#123;</span><br><span class="line">	Blocks  <span class="keyword">uint64</span></span><br><span class="line">	Bfree   <span class="keyword">uint64</span></span><br><span class="line">	Bavail  <span class="keyword">uint64</span></span><br><span class="line">	Files   <span class="keyword">uint64</span></span><br><span class="line">	Ffree   <span class="keyword">uint64</span></span><br><span class="line">	Bsize   <span class="keyword">uint32</span></span><br><span class="line">	NameLen <span class="keyword">uint32</span></span><br><span class="line">	Frsize  <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line">	Spare   [<span class="number">6</span>]<span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-RELEASE-18"><a href="#FUSE-RELEASE-18" class="headerlink" title="FUSE_RELEASE = 18"></a>FUSE_RELEASE = 18</h5><p><code>release()</code>函数，Release an open file</p>
+<h6 id="请求头后的实体-16"><a href="#请求头后的实体-16" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReleaseIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh           <span class="keyword">uint64</span></span><br><span class="line">	Flags        <span class="keyword">uint32</span></span><br><span class="line">	ReleaseFlags <span class="keyword">uint32</span></span><br><span class="line">	LockOwner    <span class="keyword">uint64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-15"><a href="#响应头的实体-15" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>release</code>只需响应头返回成功与否</p>
+<h5 id="FUSE-FSYNC-20"><a href="#FUSE-FSYNC-20" class="headerlink" title="FUSE_FSYNC = 20"></a>FUSE_FSYNC = 20</h5><p><code>fsync()</code>函数，Synchronize file contents</p>
+<h6 id="请求头后的实体-17"><a href="#请求头后的实体-17" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseFsyncIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh         <span class="keyword">uint64</span></span><br><span class="line">	FsyncFlags <span class="keyword">uint32</span></span><br><span class="line">	Padding    <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-16"><a href="#响应头的实体-16" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>fsync</code>只需响应头返回成功与否</p>
+<h5 id="FUSE-SETXATTR-21"><a href="#FUSE-SETXATTR-21" class="headerlink" title="FUSE_SETXATTR = 21"></a>FUSE_SETXATTR = 21</h5><p><code>setxattr()</code>函数，Set an extended attribute</p>
+<h6 id="请求头后的实体-18"><a href="#请求头后的实体-18" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseSetxattrIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Size  <span class="keyword">uint32</span></span><br><span class="line">	Flags <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Name  <span class="keyword">string</span></span><br><span class="line">	Value <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Size: 是Value的字节数</li>
+<li>Name: 文件扩展属性的属性名</li>
+<li>Value: 文件扩展属性的值</li>
+</ul>
+<h6 id="响应头的实体-17"><a href="#响应头的实体-17" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>setxattr</code>只需响应头返回成功与否</p>
+<h5 id="FUSE-GETXATTR-22"><a href="#FUSE-GETXATTR-22" class="headerlink" title="FUSE_GETXATTR = 22"></a>FUSE_GETXATTR = 22</h5><p><code>getxattr()</code>函数，Get an extended attribute</p>
+<h6 id="请求头后的实体-19"><a href="#请求头后的实体-19" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseGetxattrIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Size    <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Name <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Size: Name的长度</li>
+<li>Name: 要获取的文件扩展属性的名字</li>
+</ul>
+<h6 id="响应头的实体-18"><a href="#响应头的实体-18" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseGetxattrOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Size    <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Value <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Size: 表示返回的Value大小</li>
+<li>Value: 文件扩展属性Name对应的值</li>
+</ul>
+<h5 id="FUSE-LISTXATTR-23"><a href="#FUSE-LISTXATTR-23" class="headerlink" title="FUSE_LISTXATTR = 23"></a>FUSE_LISTXATTR = 23</h5><p><code>listxattr()</code>函数， List extended attribute names</p>
+<h6 id="请求头后的实体-20"><a href="#请求头后的实体-20" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseListxattrIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Size    <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Size: 表示内核接收的缓存大小</li>
+</ul>
+<h6 id="响应头的实体-19"><a href="#响应头的实体-19" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseListxattrOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Size    <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Value <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Size: 表示返回的Value大小</li>
+<li>Value: 包含文件额外属性名的字符串，格式类似<code>&quot;user.name\0system.name&quot;</code></li>
+</ul>
+<p>当<code>FuseListxattrIn</code>中的Size为0， 不需要往<code>FuseListxattrOut</code>写入Value。</p>
+<p><strong>特殊</strong>：</p>
+<ul>
+<li>当Value为空时，响应实体为<code>FuseListxattrOut</code></li>
+<li>当Value有值时，响应实体不需要<code>FuseListxattrOut</code>，而是在响应头<code>FuseOutHeader</code>后紧跟着Value的值</li>
+</ul>
+<h5 id="FUSE-REMOVEXATTR-24"><a href="#FUSE-REMOVEXATTR-24" class="headerlink" title="FUSE_REMOVEXATTR = 24"></a>FUSE_REMOVEXATTR = 24</h5><p><code>removexattr()</code>函数，Remove an extended attribute</p>
+<h6 id="请求头后的实体-21"><a href="#请求头后的实体-21" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseRemovexattrIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Name <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Name: 要删除的文件额外属性名</li>
+</ul>
+<h6 id="响应头的实体-20"><a href="#响应头的实体-20" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>removexattr</code>只需响应头返回成功与否</p>
+<h5 id="FUSE-FLUSH-25"><a href="#FUSE-FLUSH-25" class="headerlink" title="FUSE_FLUSH = 25"></a>FUSE_FLUSH = 25</h5><p><code>flush()</code>函数，Flush method</p>
+<h6 id="请求头后的实体-22"><a href="#请求头后的实体-22" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseFlushIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh        <span class="keyword">uint64</span></span><br><span class="line">	Unused    <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">	LockOwner <span class="keyword">uint64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-21"><a href="#响应头的实体-21" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>flush</code>只需响应头返回成功与否</p>
+<h5 id="FUSE-INIT-26"><a href="#FUSE-INIT-26" class="headerlink" title="FUSE_INIT = 26"></a>FUSE_INIT = 26</h5><p><code>init()</code>函数， Initialize filesystem</p>
+<p>Fuse文件系统的初始化函数，当Mount以后，从<code>/dev/fuse</code>读到的第一个请求就是<code>init</code>，只有初始化后，才会接收到其他请求。</p>
+<h6 id="请求头后的实体-23"><a href="#请求头后的实体-23" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseInitIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Major        <span class="keyword">uint32</span></span><br><span class="line">	Minor        <span class="keyword">uint32</span></span><br><span class="line">	MaxReadahead <span class="keyword">uint32</span></span><br><span class="line">	Flags        <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Major: Fuse的主版本号</li>
+<li>Minor: Fuse的副版本号</li>
+<li>Flags: 内核Fuse能提供的功能<ul>
+<li>FUSE_ASYNC_READ = (1 &lt;&lt; 0)</li>
+<li>FUSE_POSIX_LOCKS = (1 &lt;&lt; 1)</li>
+<li>FUSE_FILE_OPS = (1 &lt;&lt; 2)</li>
+<li>FUSE_ATOMIC_O_TRUNC = (1 &lt;&lt; 3)</li>
+<li>FUSE_EXPORT_SUPPORT = (1 &lt;&lt; 4)</li>
+<li>FUSE_BIG_WRITES = (1 &lt;&lt; 5)</li>
+<li>FUSE_DONT_MASK = (1 &lt;&lt; 6)</li>
+<li>FUSE_SPLICE_WRITE = (1 &lt;&lt; 7)</li>
+<li>FUSE_SPLICE_MOVE = (1 &lt;&lt; 8)</li>
+<li>FUSE_SPLICE_READ = (1 &lt;&lt; 9)</li>
+<li>FUSE_FLOCK_LOCKS = (1 &lt;&lt; 10)</li>
+<li>FUSE_HAS_IOCTL_DIR = (1 &lt;&lt; 11)</li>
+<li>FUSE_AUTO_INVAL_DATA = (1 &lt;&lt; 12)</li>
+<li>FUSE_DO_READDIRPLUS = (1 &lt;&lt; 13)</li>
+<li>FUSE_READDIRPLUS_AUTO = (1 &lt;&lt; 14)</li>
+<li>FUSE_ASYNC_DIO = (1 &lt;&lt; 15)</li>
+<li>FUSE_WRITEBACK_CACHE = (1 &lt;&lt; 16)</li>
+<li>FUSE_NO_OPEN_SUPPORT = (1 &lt;&lt; 17)</li>
+<li>FUSE_PARALLEL_DIROPS = (1 &lt;&lt; 18)</li>
+<li>FUSE_HANDLE_KILLPRIV = (1 &lt;&lt; 19)</li>
+<li>FUSE_POSIX_ACL = (1 &lt;&lt; 20)</li>
+</ul>
+</li>
+</ul>
+<h6 id="响应头的实体-22"><a href="#响应头的实体-22" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseInitOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Major               <span class="keyword">uint32</span></span><br><span class="line">	Minor               <span class="keyword">uint32</span></span><br><span class="line">	MaxReadahead        <span class="keyword">uint32</span></span><br><span class="line">	Flags               <span class="keyword">uint32</span></span><br><span class="line">	MaxBackground       <span class="keyword">uint16</span></span><br><span class="line">	CongestionThreshold <span class="keyword">uint16</span></span><br><span class="line">	MaxWrite            <span class="keyword">uint32</span></span><br><span class="line">	TimeGran            <span class="keyword">uint32</span></span><br><span class="line">	Unused              [<span class="number">9</span>]<span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Major: 主版本号</li>
+<li>Minor: 副版本号</li>
+<li>Flags: 程序希望Fuse提供的功能</li>
+</ul>
+<h5 id="FUSE-OPENDIR-27"><a href="#FUSE-OPENDIR-27" class="headerlink" title="FUSE_OPENDIR = 27"></a>FUSE_OPENDIR = 27</h5><p><code>opendir()</code>函数，Open a directory</p>
+<h6 id="请求头后的实体-24"><a href="#请求头后的实体-24" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseOpenIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Flags  <span class="keyword">uint32</span></span><br><span class="line">	Unused <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-23"><a href="#响应头的实体-23" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseOpenOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh        <span class="keyword">uint64</span></span><br><span class="line">	OpenFlags <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-READDIR-28"><a href="#FUSE-READDIR-28" class="headerlink" title="FUSE_READDIR = 28"></a>FUSE_READDIR = 28</h5><p><code>readdir()</code>函数，Read directory</p>
+<h6 id="请求头后的实体-25"><a href="#请求头后的实体-25" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReadIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh        <span class="keyword">uint64</span></span><br><span class="line">	Offset    <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint32</span></span><br><span class="line">	ReadFlags <span class="keyword">uint32</span></span><br><span class="line">	LockOwner <span class="keyword">uint64</span></span><br><span class="line">	Flags     <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Offset: 开始的偏移量</li>
+<li>Size: 内核所能接收的字节数大小</li>
+</ul>
+<h6 id="响应头的实体-24"><a href="#响应头的实体-24" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReadOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Content []<span class="keyword">byte</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseDirent <span class="keyword">struct</span> &#123;</span><br><span class="line">	Ino     <span class="keyword">uint64</span></span><br><span class="line">	Off     <span class="keyword">uint64</span></span><br><span class="line">	NameLen <span class="keyword">uint32</span></span><br><span class="line">	DirType <span class="keyword">uint32</span></span><br><span class="line">	Name    <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>读取目录比较特殊，读取目录是返回有目录中哪些文件的，<code>FuseReadOut</code>中是多个<code>FuseDirent</code>的二进制格式。</p>
+<p>并且<code>FuseReadOut</code>的大小不能超过，<code>FuseReadIn</code>中Size的大小。</p>
+<p>同时，每个<code>FuseDirent</code>的二进制字节数，必须要凑齐为8的倍数，比如某个<code>FuseDirent</code>的字节数是30，必须在其后加上<code>&quot;\0\0&quot;</code>以凑齐32。</p>
+<h5 id="FUSE-RELEASEDIR-29"><a href="#FUSE-RELEASEDIR-29" class="headerlink" title="FUSE_RELEASEDIR = 29"></a>FUSE_RELEASEDIR = 29</h5><p><code>releasedir()</code>函数，Release an open directory</p>
+<h6 id="请求头后的实体-26"><a href="#请求头后的实体-26" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReleaseIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh           <span class="keyword">uint64</span></span><br><span class="line">	Flags        <span class="keyword">uint32</span></span><br><span class="line">	ReleaseFlags <span class="keyword">uint32</span></span><br><span class="line">	LockOwner    <span class="keyword">uint64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-25"><a href="#响应头的实体-25" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>releasedir</code>只需响应头返回成功与否</p>
+<h5 id="FUSE-FSYNCDIR-30"><a href="#FUSE-FSYNCDIR-30" class="headerlink" title="FUSE_FSYNCDIR = 30"></a>FUSE_FSYNCDIR = 30</h5><p><code>fsyncdir()</code>函数，Synchronize directory contents</p>
+<h6 id="请求头后的实体-27"><a href="#请求头后的实体-27" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseFsyncIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh         <span class="keyword">uint64</span></span><br><span class="line">	FsyncFlags <span class="keyword">uint32</span></span><br><span class="line">	Padding    <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-26"><a href="#响应头的实体-26" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>fsyncdir</code>只需响应头返回成功与否</p>
+<h5 id="FUSE-GETLK-31"><a href="#FUSE-GETLK-31" class="headerlink" title="FUSE_GETLK = 31"></a>FUSE_GETLK = 31</h5><p><code>getlk()</code>函数，Test for a POSIX file lock</p>
+<h6 id="请求头后的实体-28"><a href="#请求头后的实体-28" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseLkIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh      <span class="keyword">uint64</span></span><br><span class="line">	Owner   <span class="keyword">uint64</span></span><br><span class="line">	Lk      FuseFileLock</span><br><span class="line">	LkFlags <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseFileLock <span class="keyword">struct</span> &#123;</span><br><span class="line">	Start <span class="keyword">uint64</span></span><br><span class="line">	End   <span class="keyword">uint64</span></span><br><span class="line">	Type  <span class="keyword">uint32</span></span><br><span class="line">	Pid   <span class="keyword">uint32</span> <span class="comment">/* tgid */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-27"><a href="#响应头的实体-27" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseFileLock <span class="keyword">struct</span> &#123;</span><br><span class="line">	Start <span class="keyword">uint64</span></span><br><span class="line">	End   <span class="keyword">uint64</span></span><br><span class="line">	Type  <span class="keyword">uint32</span></span><br><span class="line">	Pid   <span class="keyword">uint32</span> <span class="comment">/* tgid */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-SETLK-32"><a href="#FUSE-SETLK-32" class="headerlink" title="FUSE_SETLK = 32"></a>FUSE_SETLK = 32</h5><p><code>setlk()</code>函数，Acquire, modify or release a POSIX file lock</p>
+<h6 id="请求头后的实体-29"><a href="#请求头后的实体-29" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseLkIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh      <span class="keyword">uint64</span></span><br><span class="line">	Owner   <span class="keyword">uint64</span></span><br><span class="line">	Lk      FuseFileLock</span><br><span class="line">	LkFlags <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseFileLock <span class="keyword">struct</span> &#123;</span><br><span class="line">	Start <span class="keyword">uint64</span></span><br><span class="line">	End   <span class="keyword">uint64</span></span><br><span class="line">	Type  <span class="keyword">uint32</span></span><br><span class="line">	Pid   <span class="keyword">uint32</span> <span class="comment">/* tgid */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-28"><a href="#响应头的实体-28" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseFileLock <span class="keyword">struct</span> &#123;</span><br><span class="line">	Start <span class="keyword">uint64</span></span><br><span class="line">	End   <span class="keyword">uint64</span></span><br><span class="line">	Type  <span class="keyword">uint32</span></span><br><span class="line">	Pid   <span class="keyword">uint32</span> <span class="comment">/* tgid */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-SETLKW-33"><a href="#FUSE-SETLKW-33" class="headerlink" title="FUSE_SETLKW  = 33"></a>FUSE_SETLKW  = 33</h5><p>与<code>setlk()</code>相同</p>
+<h5 id="FUSE-ACCESS-34"><a href="#FUSE-ACCESS-34" class="headerlink" title="FUSE_ACCESS  = 34"></a>FUSE_ACCESS  = 34</h5><p><code>access()</code>函数，Check file access permissions</p>
+<h6 id="请求头后的实体-30"><a href="#请求头后的实体-30" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseAccessIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Mask    <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-29"><a href="#响应头的实体-29" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>access</code>只需响应头返回成功与否</p>
+<h5 id="FUSE-CREATE-35"><a href="#FUSE-CREATE-35" class="headerlink" title="FUSE_CREATE  = 35"></a>FUSE_CREATE  = 35</h5><p><code>create()</code>函数，Create and open a file</p>
+<h6 id="请求头后的实体-31"><a href="#请求头后的实体-31" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseCreateIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Flags   <span class="keyword">uint32</span></span><br><span class="line">	Mode    <span class="keyword">uint32</span></span><br><span class="line">	Umask   <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Name <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Mode: 文件类型以及权限模式</li>
+<li>Name: 文件名</li>
+</ul>
+<h6 id="响应头的实体-30"><a href="#响应头的实体-30" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseCreateOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Entry FuseEntryOut</span><br><span class="line">	Open  FuseOpenOut</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseEntryOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	NodeId         <span class="keyword">uint64</span> <span class="comment">/* Inode ID */</span></span><br><span class="line">	Generation     <span class="keyword">uint64</span> <span class="comment">/* Inode generation: nodeid:gen must be unique for the fs's lifetime */</span></span><br><span class="line">	EntryValid     <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the name */</span></span><br><span class="line">	AttrValid      <span class="keyword">uint64</span> <span class="comment">/* Cache timeout for the attributes */</span></span><br><span class="line">	EntryValidNsec <span class="keyword">uint32</span></span><br><span class="line">	AttrValidNsec  <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	Attr FuseAttr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseAttr <span class="keyword">struct</span> &#123;</span><br><span class="line">	Ino       <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint64</span></span><br><span class="line">	Blocks    <span class="keyword">uint64</span></span><br><span class="line">	Atime     <span class="keyword">uint64</span></span><br><span class="line">	Mtime     <span class="keyword">uint64</span></span><br><span class="line">	Ctime     <span class="keyword">uint64</span></span><br><span class="line">	AtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	MtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	CtimeNsec <span class="keyword">uint32</span></span><br><span class="line">	Mode      <span class="keyword">uint32</span></span><br><span class="line">	Nlink     <span class="keyword">uint32</span></span><br><span class="line">	Uid       <span class="keyword">uint32</span></span><br><span class="line">	Gid       <span class="keyword">uint32</span></span><br><span class="line">	Rdev      <span class="keyword">uint32</span></span><br><span class="line">	Blksize   <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseOpenOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh        <span class="keyword">uint64</span></span><br><span class="line">	OpenFlags <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>create</code>的响应实体<code>FuseCreateOut</code>需要有<code>FuseEntryOut</code>和<code>FuseOpenOut</code>的结构</p>
+<h5 id="FUSE-INTERRUPT-36"><a href="#FUSE-INTERRUPT-36" class="headerlink" title="FUSE_INTERRUPT  = 36"></a>FUSE_INTERRUPT  = 36</h5><p>程序中断接收到的请求</p>
+<h6 id="请求头后的实体-32"><a href="#请求头后的实体-32" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> FuseInterruptIn &#123;</span><br><span class="line">	uint64_t	unique;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-BMAP-37"><a href="#FUSE-BMAP-37" class="headerlink" title="FUSE_BMAP  = 37"></a>FUSE_BMAP  = 37</h5><p><code>bmap()</code>函数，Map block index within file to block index within device</p>
+<h6 id="请求头后的实体-33"><a href="#请求头后的实体-33" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseBmapIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Block     <span class="keyword">uint64</span></span><br><span class="line">	BlockSize <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-31"><a href="#响应头的实体-31" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseBmapOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Block <span class="keyword">uint64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-DESTROY-38"><a href="#FUSE-DESTROY-38" class="headerlink" title="FUSE_DESTROY  = 38"></a>FUSE_DESTROY  = 38</h5><p><code>destory()</code>函数，Clean up filesystem.</p>
+<p>没有请求实体，<strong>不需要</strong>返回响应。</p>
+<h5 id="FUSE-IOCTL-39"><a href="#FUSE-IOCTL-39" class="headerlink" title="FUSE_IOCTL = 39"></a>FUSE_IOCTL = 39</h5><p><code>ioctl()</code>函数</p>
+<h6 id="请求头后的实体-34"><a href="#请求头后的实体-34" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseIoctlIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh      <span class="keyword">uint64</span></span><br><span class="line">	Flags   <span class="keyword">uint32</span></span><br><span class="line">	Cmd     <span class="keyword">uint32</span></span><br><span class="line">	Arg     <span class="keyword">uint64</span></span><br><span class="line">	InSize  <span class="keyword">uint32</span></span><br><span class="line">	OutSize <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	InBuf []<span class="keyword">byte</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-32"><a href="#响应头的实体-32" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseIoctlOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Result  <span class="keyword">int32</span></span><br><span class="line">	Flags   <span class="keyword">uint32</span></span><br><span class="line">	InIovs  <span class="keyword">uint32</span></span><br><span class="line">	OutIovs <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-POLL-40"><a href="#FUSE-POLL-40" class="headerlink" title="FUSE_POLL  = 40"></a>FUSE_POLL  = 40</h5><p><code>poll()</code>函数，Poll for IO readiness</p>
+<h6 id="请求头后的实体-35"><a href="#请求头后的实体-35" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FusePollIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh     <span class="keyword">uint64</span></span><br><span class="line">	Kh     <span class="keyword">uint64</span></span><br><span class="line">	Flags  <span class="keyword">uint32</span></span><br><span class="line">	Events <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-33"><a href="#响应头的实体-33" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FusePollOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Revents <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-BATCH-FORGET-42"><a href="#FUSE-BATCH-FORGET-42" class="headerlink" title="FUSE_BATCH_FORGET  = 42"></a>FUSE_BATCH_FORGET  = 42</h5><p><code>forget_multi()</code>函数，Forget about multiple inodes</p>
+<p>不需要响应</p>
+<h6 id="请求头后的实体-36"><a href="#请求头后的实体-36" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseBatchForgetIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Count <span class="keyword">uint32</span></span><br><span class="line">	Dummy <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	NodeList []FuseForgetOne</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> FuseForgetOne <span class="keyword">struct</span> &#123;</span><br><span class="line">	Nodeid  <span class="keyword">uint64</span></span><br><span class="line">	Nlookup <span class="keyword">uint64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-FALLOCATE-43"><a href="#FUSE-FALLOCATE-43" class="headerlink" title="FUSE_FALLOCATE = 43"></a>FUSE_FALLOCATE = 43</h5><p><code>fallocate()</code>函数，Allocate requested space. </p>
+<h6 id="请求头后的实体-37"><a href="#请求头后的实体-37" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseFallocateIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh      <span class="keyword">uint64</span></span><br><span class="line">	Offset  <span class="keyword">uint64</span></span><br><span class="line">	Length  <span class="keyword">uint64</span></span><br><span class="line">	Mode    <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-34"><a href="#响应头的实体-34" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>fallocate</code>只需响应头返回成功与否</p>
+<h5 id="FUSE-READDIRPLUS-44"><a href="#FUSE-READDIRPLUS-44" class="headerlink" title="FUSE_READDIRPLUS = 44"></a>FUSE_READDIRPLUS = 44</h5><p><code>readdirplus()</code>函数，Read directory with attributes</p>
+<h6 id="请求头后的实体-38"><a href="#请求头后的实体-38" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReadIn <span class="keyword">struct</span> &#123;</span><br><span class="line">	Fh        <span class="keyword">uint64</span></span><br><span class="line">	Offset    <span class="keyword">uint64</span></span><br><span class="line">	Size      <span class="keyword">uint32</span></span><br><span class="line">	ReadFlags <span class="keyword">uint32</span></span><br><span class="line">	LockOwner <span class="keyword">uint64</span></span><br><span class="line">	Flags     <span class="keyword">uint32</span></span><br><span class="line">	Padding   <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-35"><a href="#响应头的实体-35" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseReadOut <span class="keyword">struct</span> &#123;</span><br><span class="line">	Content []<span class="keyword">byte</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="FUSE-RENAME2-45"><a href="#FUSE-RENAME2-45" class="headerlink" title="FUSE_RENAME2 = 45"></a>FUSE_RENAME2 = 45</h5><p>参考<code>rename</code>但请求略有不同</p>
+<h6 id="请求头后的实体-39"><a href="#请求头后的实体-39" class="headerlink" title="请求头后的实体"></a>请求头后的实体</h6><figure class="highlight golang"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> FuseRename2In <span class="keyword">struct</span> &#123;</span><br><span class="line">	NewDir  <span class="keyword">uint64</span></span><br><span class="line">	Flags   <span class="keyword">uint32</span></span><br><span class="line">	Padding <span class="keyword">uint32</span></span><br><span class="line"></span><br><span class="line">	OldName <span class="keyword">string</span></span><br><span class="line">	NewName <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="响应头的实体-36"><a href="#响应头的实体-36" class="headerlink" title="响应头的实体"></a>响应头的实体</h6><p><code>rename</code>只需响应头返回成功与否</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/11/07/Redis源码阅读笔记-服务器启动和初始化/" rel="next" title="Redis源码阅读笔记-服务器启动和初始化">
+                <i class="fa fa-chevron-left"></i> Redis源码阅读笔记-服务器启动和初始化
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是FUSE"><span class="nav-number">1.</span> <span class="nav-text">什么是FUSE</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#FUSE是怎么交互的"><span class="nav-number">2.</span> <span class="nav-text">FUSE是怎么交互的</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#FUSE的指令号、对应的函数、请求格式与响应"><span class="nav-number">3.</span> <span class="nav-text">FUSE的指令号、对应的函数、请求格式与响应</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#请求头"><span class="nav-number">3.1.</span> <span class="nav-text">请求头</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#响应头"><span class="nav-number">3.2.</span> <span class="nav-text">响应头</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#请求类型和具体结构"><span class="nav-number">3.3.</span> <span class="nav-text">请求类型和具体结构</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-LOOKUP-1"><span class="nav-number">3.3.0.1.</span> <span class="nav-text">FUSE_LOOKUP = 1</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体"><span class="nav-number">3.3.0.1.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体"><span class="nav-number">3.3.0.1.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-FORGET-2"><span class="nav-number">3.3.0.2.</span> <span class="nav-text">FUSE_FORGET = 2</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-1"><span class="nav-number">3.3.0.2.1.</span> <span class="nav-text">请求头后的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-GETATTR-3"><span class="nav-number">3.3.0.3.</span> <span class="nav-text">FUSE_GETATTR = 3</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-2"><span class="nav-number">3.3.0.3.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-1"><span class="nav-number">3.3.0.3.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-SETATTR-4"><span class="nav-number">3.3.0.4.</span> <span class="nav-text">FUSE_SETATTR = 4</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-3"><span class="nav-number">3.3.0.4.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-2"><span class="nav-number">3.3.0.4.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-READLINK-5"><span class="nav-number">3.3.0.5.</span> <span class="nav-text">FUSE_READLINK = 5</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-4"><span class="nav-number">3.3.0.5.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-3"><span class="nav-number">3.3.0.5.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-SYMLINK-6"><span class="nav-number">3.3.0.6.</span> <span class="nav-text">FUSE_SYMLINK = 6</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-5"><span class="nav-number">3.3.0.6.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-4"><span class="nav-number">3.3.0.6.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-MKNOD-8"><span class="nav-number">3.3.0.7.</span> <span class="nav-text">FUSE_MKNOD = 8</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-6"><span class="nav-number">3.3.0.7.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-5"><span class="nav-number">3.3.0.7.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-MKDIR-9"><span class="nav-number">3.3.0.8.</span> <span class="nav-text">FUSE_MKDIR = 9</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-7"><span class="nav-number">3.3.0.8.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-6"><span class="nav-number">3.3.0.8.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-UNLINK-10"><span class="nav-number">3.3.0.9.</span> <span class="nav-text">FUSE_UNLINK = 10</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-8"><span class="nav-number">3.3.0.9.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-7"><span class="nav-number">3.3.0.9.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-RMDIR-11"><span class="nav-number">3.3.0.10.</span> <span class="nav-text">FUSE_RMDIR = 11</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-9"><span class="nav-number">3.3.0.10.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-8"><span class="nav-number">3.3.0.10.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-RENAME-12"><span class="nav-number">3.3.0.11.</span> <span class="nav-text">FUSE_RENAME = 12</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-10"><span class="nav-number">3.3.0.11.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-9"><span class="nav-number">3.3.0.11.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-LINK-13"><span class="nav-number">3.3.0.12.</span> <span class="nav-text">FUSE_LINK = 13</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-11"><span class="nav-number">3.3.0.12.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-10"><span class="nav-number">3.3.0.12.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-OPEN-14"><span class="nav-number">3.3.0.13.</span> <span class="nav-text">FUSE_OPEN = 14</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-12"><span class="nav-number">3.3.0.13.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-11"><span class="nav-number">3.3.0.13.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-READ-15"><span class="nav-number">3.3.0.14.</span> <span class="nav-text">FUSE_READ = 15</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-13"><span class="nav-number">3.3.0.14.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-12"><span class="nav-number">3.3.0.14.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-WRITE-16"><span class="nav-number">3.3.0.15.</span> <span class="nav-text">FUSE_WRITE = 16</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-14"><span class="nav-number">3.3.0.15.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-13"><span class="nav-number">3.3.0.15.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-STATFS-17"><span class="nav-number">3.3.0.16.</span> <span class="nav-text">FUSE_STATFS = 17</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-15"><span class="nav-number">3.3.0.16.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-14"><span class="nav-number">3.3.0.16.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-RELEASE-18"><span class="nav-number">3.3.0.17.</span> <span class="nav-text">FUSE_RELEASE = 18</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-16"><span class="nav-number">3.3.0.17.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-15"><span class="nav-number">3.3.0.17.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-FSYNC-20"><span class="nav-number">3.3.0.18.</span> <span class="nav-text">FUSE_FSYNC = 20</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-17"><span class="nav-number">3.3.0.18.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-16"><span class="nav-number">3.3.0.18.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-SETXATTR-21"><span class="nav-number">3.3.0.19.</span> <span class="nav-text">FUSE_SETXATTR = 21</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-18"><span class="nav-number">3.3.0.19.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-17"><span class="nav-number">3.3.0.19.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-GETXATTR-22"><span class="nav-number">3.3.0.20.</span> <span class="nav-text">FUSE_GETXATTR = 22</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-19"><span class="nav-number">3.3.0.20.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-18"><span class="nav-number">3.3.0.20.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-LISTXATTR-23"><span class="nav-number">3.3.0.21.</span> <span class="nav-text">FUSE_LISTXATTR = 23</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-20"><span class="nav-number">3.3.0.21.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-19"><span class="nav-number">3.3.0.21.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-REMOVEXATTR-24"><span class="nav-number">3.3.0.22.</span> <span class="nav-text">FUSE_REMOVEXATTR = 24</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-21"><span class="nav-number">3.3.0.22.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-20"><span class="nav-number">3.3.0.22.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-FLUSH-25"><span class="nav-number">3.3.0.23.</span> <span class="nav-text">FUSE_FLUSH = 25</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-22"><span class="nav-number">3.3.0.23.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-21"><span class="nav-number">3.3.0.23.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-INIT-26"><span class="nav-number">3.3.0.24.</span> <span class="nav-text">FUSE_INIT = 26</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-23"><span class="nav-number">3.3.0.24.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-22"><span class="nav-number">3.3.0.24.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-OPENDIR-27"><span class="nav-number">3.3.0.25.</span> <span class="nav-text">FUSE_OPENDIR = 27</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-24"><span class="nav-number">3.3.0.25.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-23"><span class="nav-number">3.3.0.25.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-READDIR-28"><span class="nav-number">3.3.0.26.</span> <span class="nav-text">FUSE_READDIR = 28</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-25"><span class="nav-number">3.3.0.26.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-24"><span class="nav-number">3.3.0.26.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-RELEASEDIR-29"><span class="nav-number">3.3.0.27.</span> <span class="nav-text">FUSE_RELEASEDIR = 29</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-26"><span class="nav-number">3.3.0.27.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-25"><span class="nav-number">3.3.0.27.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-FSYNCDIR-30"><span class="nav-number">3.3.0.28.</span> <span class="nav-text">FUSE_FSYNCDIR = 30</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-27"><span class="nav-number">3.3.0.28.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-26"><span class="nav-number">3.3.0.28.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-GETLK-31"><span class="nav-number">3.3.0.29.</span> <span class="nav-text">FUSE_GETLK = 31</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-28"><span class="nav-number">3.3.0.29.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-27"><span class="nav-number">3.3.0.29.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-SETLK-32"><span class="nav-number">3.3.0.30.</span> <span class="nav-text">FUSE_SETLK = 32</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-29"><span class="nav-number">3.3.0.30.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-28"><span class="nav-number">3.3.0.30.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-SETLKW-33"><span class="nav-number">3.3.0.31.</span> <span class="nav-text">FUSE_SETLKW  = 33</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-ACCESS-34"><span class="nav-number">3.3.0.32.</span> <span class="nav-text">FUSE_ACCESS  = 34</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-30"><span class="nav-number">3.3.0.32.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-29"><span class="nav-number">3.3.0.32.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-CREATE-35"><span class="nav-number">3.3.0.33.</span> <span class="nav-text">FUSE_CREATE  = 35</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-31"><span class="nav-number">3.3.0.33.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-30"><span class="nav-number">3.3.0.33.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-INTERRUPT-36"><span class="nav-number">3.3.0.34.</span> <span class="nav-text">FUSE_INTERRUPT  = 36</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-32"><span class="nav-number">3.3.0.34.1.</span> <span class="nav-text">请求头后的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-BMAP-37"><span class="nav-number">3.3.0.35.</span> <span class="nav-text">FUSE_BMAP  = 37</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-33"><span class="nav-number">3.3.0.35.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-31"><span class="nav-number">3.3.0.35.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-DESTROY-38"><span class="nav-number">3.3.0.36.</span> <span class="nav-text">FUSE_DESTROY  = 38</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-IOCTL-39"><span class="nav-number">3.3.0.37.</span> <span class="nav-text">FUSE_IOCTL = 39</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-34"><span class="nav-number">3.3.0.37.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-32"><span class="nav-number">3.3.0.37.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-POLL-40"><span class="nav-number">3.3.0.38.</span> <span class="nav-text">FUSE_POLL  = 40</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-35"><span class="nav-number">3.3.0.38.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-33"><span class="nav-number">3.3.0.38.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-BATCH-FORGET-42"><span class="nav-number">3.3.0.39.</span> <span class="nav-text">FUSE_BATCH_FORGET  = 42</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-36"><span class="nav-number">3.3.0.39.1.</span> <span class="nav-text">请求头后的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-FALLOCATE-43"><span class="nav-number">3.3.0.40.</span> <span class="nav-text">FUSE_FALLOCATE = 43</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-37"><span class="nav-number">3.3.0.40.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-34"><span class="nav-number">3.3.0.40.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-READDIRPLUS-44"><span class="nav-number">3.3.0.41.</span> <span class="nav-text">FUSE_READDIRPLUS = 44</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-38"><span class="nav-number">3.3.0.41.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-35"><span class="nav-number">3.3.0.41.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#FUSE-RENAME2-45"><span class="nav-number">3.3.0.42.</span> <span class="nav-text">FUSE_RENAME2 = 45</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#请求头后的实体-39"><span class="nav-number">3.3.0.42.1.</span> <span class="nav-text">请求头后的实体</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#响应头的实体-36"><span class="nav-number">3.3.0.42.2.</span> <span class="nav-text">响应头的实体</span></a></li></ol></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

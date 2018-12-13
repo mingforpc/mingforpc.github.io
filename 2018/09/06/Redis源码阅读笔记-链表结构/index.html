@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="链表Redis中是自己实现的链表。链表被广泛用于Redis的各种功能，比如列表键、发布于订阅、慢查询、监视器等。 列表键的底层实现之一就是链表(Redis3.2 之前，在Redis3.2 后被换成了快速列表quicklist)。当一个列表建包含了数量比较多的元素，又或者列表中包含的元素都是比较长的字符串时，Reids会使用链表作为列表键的底层实现。(《Redis设计与实现》) 特点来之《Redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis源码阅读笔记-链表结构">
+<meta property="og:url" content="http://yoursite.com/2018/09/06/Redis源码阅读笔记-链表结构/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="链表Redis中是自己实现的链表。链表被广泛用于Redis的各种功能，比如列表键、发布于订阅、慢查询、监视器等。 列表键的底层实现之一就是链表(Redis3.2 之前，在Redis3.2 后被换成了快速列表quicklist)。当一个列表建包含了数量比较多的元素，又或者列表中包含的元素都是比较长的字符串时，Reids会使用链表作为列表键的底层实现。(《Redis设计与实现》) 特点来之《Redis">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2018-12-13T14:28:18.395Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis源码阅读笔记-链表结构">
+<meta name="twitter:description" content="链表Redis中是自己实现的链表。链表被广泛用于Redis的各种功能，比如列表键、发布于订阅、慢查询、监视器等。 列表键的底层实现之一就是链表(Redis3.2 之前，在Redis3.2 后被换成了快速列表quicklist)。当一个列表建包含了数量比较多的元素，又或者列表中包含的元素都是比较长的字符串时，Reids会使用链表作为列表键的底层实现。(《Redis设计与实现》) 特点来之《Redis">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/09/06/Redis源码阅读笔记-链表结构/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Redis源码阅读笔记-链表结构 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/09/06/Redis源码阅读笔记-链表结构/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis源码阅读笔记-链表结构
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-09-06 13:22:00" itemprop="dateCreated datePublished" datetime="2018-09-06T13:22:00+08:00">2018-09-06</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 22:28:18" itemprop="dateModified" datetime="2018-12-13T22:28:18+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Redis/" itemprop="url" rel="index"><span itemprop="name">Redis</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Redis/阅读笔记/" itemprop="url" rel="index"><span itemprop="name">阅读笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="链表"><a href="#链表" class="headerlink" title="链表"></a>链表</h2><p>Redis中是自己实现的链表。链表被广泛用于Redis的各种功能，比如列表键、发布于订阅、慢查询、监视器等。</p>
+<p>列表键的底层实现之一就是链表(Redis3.2 之前，在Redis3.2 后被换成了快速列表<code>quicklist</code>)。当一个列表建包含了数量比较多的元素，又或者列表中包含的元素都是比较长的字符串时，Reids会使用链表作为列表键的底层实现。(《Redis设计与实现》)</p>
+<h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><p>来之《Redis设计与实现》</p>
+<ul>
+<li>每个链表结点由一个<code>listNode</code>结构来表示，每个结点都由一个指向前置结点和后置结点的指针，所有Redis的链表实现是双端链表。</li>
+<li>每个链表使用一个<code>list</code>结构来表示，这个结构带有表头结点指针、表位结点指针、已经链表长度等信息。</li>
+<li>因为链表表头结点的前置节点和表尾结点的后置节点都指向NULL，所以Redis的链表实现是无环链表。</li>
+<li>通过为链表设置不同的类型特定函数，Redis的链表可以用于保存各种不同类型的值。</li>
+</ul>
+<h2 id="代码结构"><a href="#代码结构" class="headerlink" title="代码结构"></a>代码结构</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// adlist.h</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 链表结点</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">listNode</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">listNode</span> *<span class="title">prev</span>;</span> <span class="comment">// 前置节点</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">listNode</span> *<span class="title">next</span>;</span> <span class="comment">// 后置节点</span></span><br><span class="line">    <span class="keyword">void</span> *value; <span class="comment">// 节点值</span></span><br><span class="line">&#125; listNode;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 链表结构</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">list</span> &#123;</span></span><br><span class="line">    listNode *head; <span class="comment">// 表头节点</span></span><br><span class="line">    listNode *tail; <span class="comment">// 表尾节点</span></span><br><span class="line">    <span class="keyword">void</span> *(*dup)(<span class="keyword">void</span> *ptr); <span class="comment">// 节点值复制函数指针</span></span><br><span class="line">    <span class="keyword">void</span> (*<span class="built_in">free</span>)(<span class="keyword">void</span> *ptr); <span class="comment">// 节点值释放函数指针</span></span><br><span class="line">    <span class="keyword">int</span> (*match)(<span class="keyword">void</span> *ptr, <span class="keyword">void</span> *key); <span class="comment">// 节点值对比函数指针</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> len; <span class="comment">// 链表所包含的节点数量</span></span><br><span class="line">&#125; <span class="built_in">list</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 链表的迭代器</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">listIter</span> &#123;</span></span><br><span class="line">    listNode *next; <span class="comment">// 下一个节点</span></span><br><span class="line">    <span class="keyword">int</span> direction; <span class="comment">// 迭代方向</span></span><br><span class="line">&#125; listIter;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>dup</code>函数用于复制链表节点所保存的值；</li>
+<li><code>free</code>函数用于释放链表节点所保存的值；</li>
+<li><code>match</code>函数用于对比链表节点所保存的值和另一个输入值是否相等；</li>
+</ul>
+<h2 id="部分代码解析"><a href="#部分代码解析" class="headerlink" title="部分代码解析"></a>部分代码解析</h2><ul>
+<li><p><code>list *listAddNodeHead(list *list, void *value)</code> 向list中添加链表头:</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Add a new node to the list, to head, containing the specified 'value'</span></span><br><span class="line"><span class="comment"> * pointer as value.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * On error, NULL is returned and no operation is performed (i.e. the</span></span><br><span class="line"><span class="comment"> * list remains unaltered).</span></span><br><span class="line"><span class="comment"> * On success the 'list' pointer you pass to the function is returned. */</span></span><br><span class="line"><span class="function"><span class="built_in">list</span> *<span class="title">listAddNodeHead</span><span class="params">(<span class="built_in">list</span> *<span class="built_in">list</span>, <span class="keyword">void</span> *value)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    listNode *node;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 为链表节点分配内存</span></span><br><span class="line">    <span class="keyword">if</span> ((node = zmalloc(<span class="keyword">sizeof</span>(*node))) == <span class="literal">NULL</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    <span class="comment">// 给链表节点的value赋值</span></span><br><span class="line">    node-&gt;value = value;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">list</span>-&gt;len == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// 如果list本来没有节点，则将表头节点和表尾节点都设置node</span></span><br><span class="line">        <span class="built_in">list</span>-&gt;head = <span class="built_in">list</span>-&gt;tail = node;</span><br><span class="line">        <span class="comment">// 且node的前置和后置节点都是NULL</span></span><br><span class="line">        node-&gt;prev = node-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 如果list本来已经存在节点</span></span><br><span class="line">        <span class="comment">// 则将node的前置节点设为NULL</span></span><br><span class="line">        node-&gt;prev = <span class="literal">NULL</span>;</span><br><span class="line">        <span class="comment">// 然后将node的后置节点指向list原本的表头节点</span></span><br><span class="line">        node-&gt;next = <span class="built_in">list</span>-&gt;head;</span><br><span class="line">        <span class="comment">// 将list原本的表头节点的前置节点指向node</span></span><br><span class="line">        <span class="built_in">list</span>-&gt;head-&gt;prev = node;</span><br><span class="line">        <span class="comment">// 将node设为list的新表头节点</span></span><br><span class="line">        <span class="built_in">list</span>-&gt;head = node;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// list的长度加1</span></span><br><span class="line">    <span class="built_in">list</span>-&gt;len++;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">list</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><code>list *listInsertNode(list *list, listNode *old_node, void *value, int after)</code>向list中插入节点<code>value</code>，插入位置是<code>old_node</code>，<code>after</code>表示在<code>old_node</code>前还是后:</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="built_in">list</span> *<span class="title">listInsertNode</span><span class="params">(<span class="built_in">list</span> *<span class="built_in">list</span>, listNode *old_node, <span class="keyword">void</span> *value, <span class="keyword">int</span> after)</span> </span>&#123;</span><br><span class="line">    listNode *node;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 给要插入的节点node分配内存</span></span><br><span class="line">    <span class="keyword">if</span> ((node = zmalloc(<span class="keyword">sizeof</span>(*node))) == <span class="literal">NULL</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    <span class="comment">// node的value赋值</span></span><br><span class="line">    node-&gt;value = value;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (after) &#123;</span><br><span class="line">        <span class="comment">// 插入到old_node后</span></span><br><span class="line">        node-&gt;prev = old_node;</span><br><span class="line">        node-&gt;next = old_node-&gt;next;</span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">list</span>-&gt;tail == old_node) &#123;</span><br><span class="line">            <span class="comment">// 如果old_node原本是表尾节点，则重新将表尾节点指向node</span></span><br><span class="line">            <span class="built_in">list</span>-&gt;tail = node;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 插入到old_node前</span></span><br><span class="line">        node-&gt;next = old_node;</span><br><span class="line">        node-&gt;prev = old_node-&gt;prev;</span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">list</span>-&gt;head == old_node) &#123;</span><br><span class="line">            <span class="comment">// 如果old_node原本是表头节点，则重新将表尾节点指向node</span></span><br><span class="line">            <span class="built_in">list</span>-&gt;head = node;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (node-&gt;prev != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="comment">//如果node的前置节点不为NULL，则将node的前置节点的后置节点指向node</span></span><br><span class="line">        node-&gt;prev-&gt;next = node;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (node-&gt;next != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="comment">//如果node的后置节点不为NULL，则将node的后置节点的前置节点指向node</span></span><br><span class="line">        node-&gt;next-&gt;prev = node;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// list的长度加1</span></span><br><span class="line">    <span class="built_in">list</span>-&gt;len++;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">list</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><code>void listDelNode(list *list, listNode *node)</code>删除list中的节点<code>node</code>：</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Remove the specified node from the specified list.</span></span><br><span class="line"><span class="comment"> * It's up to the caller to free the private value of the node.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * This function can't fail. */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">listDelNode</span><span class="params">(<span class="built_in">list</span> *<span class="built_in">list</span>, listNode *node)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (node-&gt;prev)</span><br><span class="line">        <span class="comment">// 如果node有前置节点</span></span><br><span class="line">        <span class="comment">// 则将 node前置节点的后置节点 指向 node的后置节点</span></span><br><span class="line">        node-&gt;prev-&gt;next = node-&gt;next;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="comment">// 如果node没有前置节点，则说明node是表头节点</span></span><br><span class="line">        <span class="comment">// 将list的表头节点指向 node的后置节点</span></span><br><span class="line">        <span class="built_in">list</span>-&gt;head = node-&gt;next;</span><br><span class="line">    <span class="keyword">if</span> (node-&gt;next)</span><br><span class="line">        <span class="comment">// 如果node有后置节点</span></span><br><span class="line">        <span class="comment">// 则将 node的后置节点的前置节点 指向 node的前置节点</span></span><br><span class="line">        node-&gt;next-&gt;prev = node-&gt;prev;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="comment">// 如果node没有后置节点，则说明node是表尾节点</span></span><br><span class="line">        <span class="comment">// 将list的表尾节点指向 node的前置节点</span></span><br><span class="line">        <span class="built_in">list</span>-&gt;tail = node-&gt;prev;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 如果list有free函数，则调用free函数释放node中的value</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">list</span>-&gt;<span class="built_in">free</span>) <span class="built_in">list</span>-&gt;<span class="built_in">free</span>(node-&gt;value);</span><br><span class="line">    <span class="comment">// 释放node的内存</span></span><br><span class="line">    zfree(node);</span><br><span class="line">    <span class="comment">// list长度减1</span></span><br><span class="line">    <span class="built_in">list</span>-&gt;len--;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h2 id="链表API"><a href="#链表API" class="headerlink" title="链表API"></a>链表API</h2><p>参考之《Redis设计与实现》</p>
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>作用</th>
+<th>时间复杂度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list *listCreate(void)</code></td>
+<td>创建一个不包含任何节点的新链表</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>void listRelease(list *list)</code></td>
+<td>释放整个链表</td>
+<td>O(N)</td>
+</tr>
+<tr>
+<td><code>void listEmpty(list *list)</code></td>
+<td>将整个链表的节点情况，不释放链表本身</td>
+<td>O(N)</td>
+</tr>
+<tr>
+<td><code>list *listAddNodeHead(list *list, void *value)</code></td>
+<td>将一个包含给定值的新节点添加为链表的表头</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list *listAddNodeTail(list *list, void *value)</code></td>
+<td>将一个包含给定值的新节点添加为链表的表尾</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list *listInsertNode(list *list, listNode *old_node, void *value, int after)</code></td>
+<td>将一个包含给定值的新节点添加到链表给定节点的前或者后</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>void listDelNode(list *list, listNode *node)</code></td>
+<td>删除链表中的给定节点</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>listIter *listGetIterator(list *list, int direction)</code></td>
+<td>获取给定链表的迭代器</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>listNode *listNext(listIter *iter)</code></td>
+<td>获取链表迭代器的下一个节点</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>void listReleaseIterator(listIter *iter)</code></td>
+<td>释放链表迭代器</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list *listDup(list *orig)</code></td>
+<td>复制一个给定链表的副本</td>
+<td>O(N)</td>
+</tr>
+<tr>
+<td><code>listNode *listSearchKey(list *list, void *key)</code></td>
+<td>在给定链表中查找并返回链表中包含给定值<code>key</code>的节点</td>
+<td>O(N)</td>
+</tr>
+<tr>
+<td><code>listNode *listIndex(list *list, long index)</code></td>
+<td>返回链表中给定索引<code>index</code>上的节点</td>
+<td>O(N)</td>
+</tr>
+<tr>
+<td><code>void listRewind(list *list, listIter *li)</code></td>
+<td>将给定迭代器<code>li</code>指定给定的链表<code>list</code>,迭代器<code>li</code>指向的是链表<code>list</code>的表头结点</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>void listRewindTail(list *list, listIter *li)</code></td>
+<td>将给定迭代器<code>li</code>指定给定的链表<code>list</code>，但迭代器<code>li</code>指向的是链表<code>list</code>的表尾结点</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>void listRotate(list *list)</code></td>
+<td>将链表的尾结点弹出，然后将被弹出的节点插入到链表的表头，成为新的表头节点</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>void listJoin(list *l, list *o)</code></td>
+<td>将链表<code>o</code>的节点追加到链表<code>l</code>的表尾后，然后将<code>o</code>设置为空(不是NULL，而是没有节点)</td>
+<td>O(1)</td>
+</tr>
+</tbody>
+</table>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/09/05/Redis源码阅读笔记-动态字符串-SDS-结构/" rel="next" title="Redis源码阅读笔记-动态字符串(SDS)结构">
+                <i class="fa fa-chevron-left"></i> Redis源码阅读笔记-动态字符串(SDS)结构
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/09/09/Redis源码阅读笔记-字典结构/" rel="prev" title="Redis源码阅读笔记-字典结构">
+                Redis源码阅读笔记-字典结构 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#链表"><span class="nav-number">1.</span> <span class="nav-text">链表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#特点"><span class="nav-number">2.</span> <span class="nav-text">特点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#代码结构"><span class="nav-number">3.</span> <span class="nav-text">代码结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#部分代码解析"><span class="nav-number">4.</span> <span class="nav-text">部分代码解析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#链表API"><span class="nav-number">5.</span> <span class="nav-text">链表API</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

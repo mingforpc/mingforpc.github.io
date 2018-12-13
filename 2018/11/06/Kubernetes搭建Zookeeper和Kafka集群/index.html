@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="主要参考了https://www.cnblogs.com/00986014w/p/9561901.html 这篇博文，但他zookeeper使用的不是官方镜像 我使用的是3个节点的Zookeeper集群，可以参照着修改。 搭建Zookeeper集群集群Service的zookeeper-svc.yaml123456789101112131415161718192021222324252627282">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes搭建Zookeeper和Kafka集群">
+<meta property="og:url" content="http://yoursite.com/2018/11/06/Kubernetes搭建Zookeeper和Kafka集群/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="主要参考了https://www.cnblogs.com/00986014w/p/9561901.html 这篇博文，但他zookeeper使用的不是官方镜像 我使用的是3个节点的Zookeeper集群，可以参照着修改。 搭建Zookeeper集群集群Service的zookeeper-svc.yaml123456789101112131415161718192021222324252627282">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2018-12-13T15:52:55.557Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes搭建Zookeeper和Kafka集群">
+<meta name="twitter:description" content="主要参考了https://www.cnblogs.com/00986014w/p/9561901.html 这篇博文，但他zookeeper使用的不是官方镜像 我使用的是3个节点的Zookeeper集群，可以参照着修改。 搭建Zookeeper集群集群Service的zookeeper-svc.yaml123456789101112131415161718192021222324252627282">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/11/06/Kubernetes搭建Zookeeper和Kafka集群/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Kubernetes搭建Zookeeper和Kafka集群 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/11/06/Kubernetes搭建Zookeeper和Kafka集群/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes搭建Zookeeper和Kafka集群
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-11-06 00:03:00" itemprop="dateCreated datePublished" datetime="2018-11-06T00:03:00+08:00">2018-11-06</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2018-12-13 23:52:55" itemprop="dateModified" datetime="2018-12-13T23:52:55+08:00">2018-12-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Kubernetes/" itemprop="url" rel="index"><span itemprop="name">Kubernetes</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>主要参考了<a href="https://www.cnblogs.com/00986014w/p/9561901.html" target="_blank" rel="noopener">https://www.cnblogs.com/00986014w/p/9561901.html</a> 这篇博文，但他zookeeper使用的不是官方镜像</p>
+<p>我使用的是3个节点的Zookeeper集群，可以参照着修改。</p>
+<h2 id="搭建Zookeeper集群"><a href="#搭建Zookeeper集群" class="headerlink" title="搭建Zookeeper集群"></a>搭建Zookeeper集群</h2><h3 id="集群Service的zookeeper-svc-yaml"><a href="#集群Service的zookeeper-svc-yaml" class="headerlink" title="集群Service的zookeeper-svc.yaml"></a>集群Service的<code>zookeeper-svc.yaml</code></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  labels:</span><br><span class="line">    app: zookeeper-cluster-service-1</span><br><span class="line">  name: zookeeper-cluster1</span><br><span class="line">spec:</span><br><span class="line">  ports:</span><br><span class="line">  - name: client </span><br><span class="line">    port: 2181</span><br><span class="line">    protocol: TCP</span><br><span class="line">  - name: follower</span><br><span class="line">    port: 2888</span><br><span class="line">    protocol: TCP</span><br><span class="line">  - name: leader</span><br><span class="line">    port: 3888</span><br><span class="line">    protocol: TCP</span><br><span class="line">  selector:</span><br><span class="line">    app: zookeeper-cluster-service-1</span><br><span class="line">---</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  labels:</span><br><span class="line">    app: zookeeper-cluster-service-2</span><br><span class="line">  name: zookeeper-cluster2</span><br><span class="line">spec:</span><br><span class="line">  ports:</span><br><span class="line">  - name: client</span><br><span class="line">    port: 2181</span><br><span class="line">    protocol: TCP</span><br><span class="line">  - name: follower</span><br><span class="line">    port: 2888</span><br><span class="line">    protocol: TCP</span><br><span class="line">  - name: leader</span><br><span class="line">    port: 3888</span><br><span class="line">    protocol: TCP</span><br><span class="line">  selector:</span><br><span class="line">    app: zookeeper-cluster-service-2</span><br><span class="line">---</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  labels:</span><br><span class="line">    app: zookeeper-cluster-service-3</span><br><span class="line">  name: zookeeper-cluster3</span><br><span class="line">spec:</span><br><span class="line">  ports:</span><br><span class="line">  - name: client</span><br><span class="line">    port: 2181</span><br><span class="line">    protocol: TCP</span><br><span class="line">  - name: follower</span><br><span class="line">    port: 2888</span><br><span class="line">    protocol: TCP</span><br><span class="line">  - name: leader</span><br><span class="line">    port: 3888</span><br><span class="line">    protocol: TCP</span><br><span class="line">  selector:</span><br><span class="line">    app: zookeeper-cluster-service-3</span><br></pre></td></tr></table></figure>
+<p>通过<code>sudo kubectl create -f zookeeper-svc.yaml</code>创建3个Service。</p>
+<h3 id="集群Deployment的zookeeper-deployment-yaml"><a href="#集群Deployment的zookeeper-deployment-yaml" class="headerlink" title="集群Deployment的zookeeper-deployment.yaml"></a>集群Deployment的<code>zookeeper-deployment.yaml</code></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  labels:</span><br><span class="line">    app: zookeeper-cluster-service-1 </span><br><span class="line">  name: zookeeper-cluster-1</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: zookeeper-cluster-service-1</span><br><span class="line">        name: zookeeper-cluster-1 </span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - image: zookeeper</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        name: zookeeper-cluster-1 </span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 2181</span><br><span class="line">        env:</span><br><span class="line">        - name: ZOO_MY_ID</span><br><span class="line">          value: &quot;1&quot;</span><br><span class="line">        - name: ZOO_SERVERS</span><br><span class="line">          value: &quot;server.1=0.0.0.0:2888:3888 server.2=zookeeper-cluster2:2888:3888 server.3=zookeeper-cluster3:2888:3888&quot;</span><br><span class="line">---</span><br><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  labels:</span><br><span class="line">    app: zookeeper-cluster-service-2</span><br><span class="line">  name: zookeeper-cluster-2</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: zookeeper-cluster-service-2</span><br><span class="line">        name: zookeeper-cluster-2</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - image: zookeeper</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        name: zookeeper-cluster-2</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 2181</span><br><span class="line">        env:</span><br><span class="line">        - name: ZOO_MY_ID</span><br><span class="line">          value: &quot;2&quot;</span><br><span class="line">        - name: ZOO_SERVERS</span><br><span class="line">          value: &quot;server.1=zookeeper-cluster1:2888:3888 server.2=0.0.0.0:2888:3888 server.3=zookeeper-cluster3:2888:3888&quot;</span><br><span class="line">---</span><br><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  labels:</span><br><span class="line">    app: zookeeper-cluster-service-1</span><br><span class="line">  name: zookeeper-cluster-3</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: zookeeper-cluster-service-3</span><br><span class="line">        name: zookeeper-cluster-3</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - image: zookeeper</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        name: zookeeper-cluster-3</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 2181</span><br><span class="line">        env:</span><br><span class="line">        - name: ZOO_MY_ID</span><br><span class="line">          value: &quot;3&quot;</span><br><span class="line">        - name: ZOO_SERVERS</span><br><span class="line">          value: &quot;server.1=zookeeper-cluster1:2888:3888 server.2=zookeeper-cluster2:2888:3888 server.3=0.0.0.0:2888:3888&quot;</span><br></pre></td></tr></table></figure>
+<p>通过<code>sudo kubectl create -f zookeeper-deployment.yaml</code>创建3个Deployment。</p>
+<h3 id="检查集群是否启动成功"><a href="#检查集群是否启动成功" class="headerlink" title="检查集群是否启动成功"></a>检查集群是否启动成功</h3><p>等3个Pod成为<code>Running</code>状态后，通过<code>sudo kubectl log zookeeper-cluster-1-xxxxxx</code>检查日志中是否有错误。</p>
+<p>然后通过<code>sudo kubectl exec -it zookeeper-cluster-1-676df4686f-c7b6d /bin/bash</code>分别进入两个Pod，执行<code>/bin/zkCli.sh</code>分别创建查看，试试是否能成功。</p>
+<h2 id="搭建Kafka集群"><a href="#搭建Kafka集群" class="headerlink" title="搭建Kafka集群"></a>搭建Kafka集群</h2><h3 id="集群Service的kafka-svc-yaml"><a href="#集群Service的kafka-svc-yaml" class="headerlink" title="集群Service的kafka-svc.yaml"></a>集群Service的<code>kafka-svc.yaml</code></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  name: kafka-cluster1</span><br><span class="line">  labels:</span><br><span class="line">    app: kafka-cluster-1</span><br><span class="line">spec:</span><br><span class="line">  type: NodePort</span><br><span class="line">  ports:</span><br><span class="line">  - port: 9092</span><br><span class="line">    name: kafka-cluster-1</span><br><span class="line">    targetPort: 9092</span><br><span class="line">    nodePort: 30091</span><br><span class="line">    protocol: TCP</span><br><span class="line">  selector:</span><br><span class="line">    app: kafka-cluster-1</span><br><span class="line">---</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  name: kafka-cluster2</span><br><span class="line">  labels:</span><br><span class="line">    app: kafka-cluster-2</span><br><span class="line">spec:</span><br><span class="line">  type: NodePort</span><br><span class="line">  ports:</span><br><span class="line">  - port: 9092</span><br><span class="line">    name: kafka-cluster-2</span><br><span class="line">    targetPort: 9092</span><br><span class="line">    nodePort: 30092</span><br><span class="line">    protocol: TCP</span><br><span class="line">  selector:</span><br><span class="line">    app: kafka-cluster-2</span><br><span class="line">---</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  name: kafka-cluster3</span><br><span class="line">  labels:</span><br><span class="line">    app: kafka-cluster-3</span><br><span class="line">spec:</span><br><span class="line">  type: NodePort</span><br><span class="line">  ports:</span><br><span class="line">  - port: 9092</span><br><span class="line">    name: kafka-cluster-3</span><br><span class="line">    targetPort: 9092</span><br><span class="line">    nodePort: 30093</span><br><span class="line">    protocol: TCP</span><br><span class="line">  selector:</span><br><span class="line">    app: kafka-cluster-3</span><br></pre></td></tr></table></figure>
+<p>通过<code>sudo kubectl create -f kafka-svc.yaml</code>创建3个Service。</p>
+<h3 id="集群Deployment的kafka-deployment-yaml"><a href="#集群Deployment的kafka-deployment-yaml" class="headerlink" title="集群Deployment的kafka-deployment.yaml"></a>集群Deployment的<code>kafka-deployment.yaml</code></h3><p>这里需要注意，要把<code>env</code>中<code>KAFKA_ADVERTISED_HOST_NAME</code>改成各个Pod对应Service的ClusterIP。</p>
+<p>PS： 如果上面zookeeper的service和我定义的不同，就对应着修改<code>KAFKA_ZOOKEEPER_CONNECT</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br></pre></td><td class="code"><pre><span class="line">kind: Deployment</span><br><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">metadata:</span><br><span class="line">  name: kafka-cluster-1 </span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      name: kafka-cluster-1 </span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        name: kafka-cluster-1</span><br><span class="line">        app: kafka-cluster-1</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - name: kafka-cluster-1</span><br><span class="line">        image: wurstmeister/kafka</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 9092</span><br><span class="line">        env:</span><br><span class="line">        - name: KAFKA_ADVERTISED_PORT</span><br><span class="line">          value: &quot;9092&quot;</span><br><span class="line">        - name: KAFKA_ADVERTISED_HOST_NAME</span><br><span class="line">          value: &quot;[zookeeper-cluster1  的 ClusterIP]&quot;</span><br><span class="line">        - name: KAFKA_ZOOKEEPER_CONNECT</span><br><span class="line">          value: zookeeper-cluster1:2181,zookeeper-cluster2:2181,zookeeper-cluster3:2181</span><br><span class="line">        - name: KAFKA_BROKER_ID</span><br><span class="line">          value: &quot;1&quot;</span><br><span class="line">---</span><br><span class="line">kind: Deployment</span><br><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">metadata:</span><br><span class="line">  name: kafka-cluster-2</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      name: kafka-cluster-2</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        name: kafka-cluster-2</span><br><span class="line">        app: kafka-cluster-2</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - name: kafka-cluster-2</span><br><span class="line">        image: wurstmeister/kafka</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 9092</span><br><span class="line">        env:</span><br><span class="line">        - name: KAFKA_ADVERTISED_PORT</span><br><span class="line">          value: &quot;9092&quot;</span><br><span class="line">        - name: KAFKA_ADVERTISED_HOST_NAME</span><br><span class="line">          value: &quot;[zookeeper-cluster2 的  ClusterIP]&quot;</span><br><span class="line">        - name: KAFKA_ZOOKEEPER_CONNECT</span><br><span class="line">          value: zookeeper-cluster1:2181,zookeeper-cluster2:2181,zookeeper-cluster3:2181</span><br><span class="line">        - name: KAFKA_BROKER_ID</span><br><span class="line">          value: &quot;2&quot;</span><br><span class="line">---</span><br><span class="line">kind: Deployment</span><br><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">metadata:</span><br><span class="line">  name: kafka-cluster-3</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      name: kafka-cluster-3</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        name: kafka-cluster-3</span><br><span class="line">        app: kafka-cluster-3</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - name: kafka-cluster-3</span><br><span class="line">        image: wurstmeister/kafka</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 9092</span><br><span class="line">        env:</span><br><span class="line">        - name: KAFKA_ADVERTISED_PORT</span><br><span class="line">          value: &quot;9092&quot;</span><br><span class="line">        - name: KAFKA_ADVERTISED_HOST_NAME</span><br><span class="line">          value: &quot;[zookeeper-cluster3  的  ClusterIP]&quot;</span><br><span class="line">        - name: KAFKA_ZOOKEEPER_CONNECT</span><br><span class="line">          value: zookeeper-cluster1:2181,zookeeper-cluster2:2181,zookeeper-cluster3:2181</span><br><span class="line">        - name: KAFKA_BROKER_ID</span><br><span class="line">          value: &quot;3&quot;</span><br></pre></td></tr></table></figure>
+<p>通过<code>sudo kubectl create -f zookeeper-deployment.yaml</code>创建3个Deployment。</p>
+<h3 id="检查集群是否启动成功-1"><a href="#检查集群是否启动成功-1" class="headerlink" title="检查集群是否启动成功"></a>检查集群是否启动成功</h3><p>等3个Pod成为<code>Running</code>状态后，通过<code>sudo kubectl log kafka-cluster-1-xxxxxx</code>检查日志中是否有错误。</p>
+<p>然后通过<code>sudo kubectl exec -it -sudo kubectl exec -it kafka-cluster-1-558747bc7d-5n94p /bin/bash</code>进入Pod，执行<code>kafka-console-producer.sh --broker-list [zookeeper-cluster1  的 ClusterIP]:9092 --topic test</code>创建了topic <code>test</code>。</p>
+<p>通过<code>sudo kubectl exec -it kafka-cluster-2-66c88f759b-8wlvp /bin/bash</code>进入Pod，执行<code>kafka-console-consumer.sh --bootstrap-server [zookeeper-cluster2  的 ClusterIP]:9092 --topic test --from-beginning</code>接收topic <code>test</code>的消息。</p>
+<p>然后试着在cluster-1中发送消息，看看在cluster-2中是否能接收。</p>
+<ul>
+<li><strong>2018-11-23</strong> PS:hhhh，其实Kafka用了nodeport还是没用的，因为client端最终获取到的Kafka地址列表是pod的IP，所以还是只能用在集群机器里面。</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/10/31/用Kubeadm安装K8s后，kube-flannel-ds一直CrashLoopBackOff/" rel="next" title="用Kubeadm安装K8s后，kube-flannel-ds一直CrashLoopBackOff">
+                <i class="fa fa-chevron-left"></i> 用Kubeadm安装K8s后，kube-flannel-ds一直CrashLoopBackOff
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/11/07/Redis源码阅读笔记-服务器启动和初始化/" rel="prev" title="Redis源码阅读笔记-服务器启动和初始化">
+                Redis源码阅读笔记-服务器启动和初始化 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#搭建Zookeeper集群"><span class="nav-number">1.</span> <span class="nav-text">搭建Zookeeper集群</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#集群Service的zookeeper-svc-yaml"><span class="nav-number">1.1.</span> <span class="nav-text">集群Service的zookeeper-svc.yaml</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群Deployment的zookeeper-deployment-yaml"><span class="nav-number">1.2.</span> <span class="nav-text">集群Deployment的zookeeper-deployment.yaml</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#检查集群是否启动成功"><span class="nav-number">1.3.</span> <span class="nav-text">检查集群是否启动成功</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#搭建Kafka集群"><span class="nav-number">2.</span> <span class="nav-text">搭建Kafka集群</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#集群Service的kafka-svc-yaml"><span class="nav-number">2.1.</span> <span class="nav-text">集群Service的kafka-svc.yaml</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#集群Deployment的kafka-deployment-yaml"><span class="nav-number">2.2.</span> <span class="nav-text">集群Deployment的kafka-deployment.yaml</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#检查集群是否启动成功-1"><span class="nav-number">2.3.</span> <span class="nav-text">检查集群是否启动成功</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
