@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="Redis会为监听端口的Server Socket的fd在事件循环中注册读就绪事件，并添加相应的handler进行处理。 123456789101112131415void initServer(void) &amp;#123;    ......    // 为监听的端口的fd设置epoll事件和回调， 针对TCP socket    /* Create an event handler for acc">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis源码阅读笔记-命令的接收和执行过程(一)">
+<meta property="og:url" content="http://yoursite.com/2018/12/20/Redis源码阅读笔记-命令的接收和执行过程-一/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="Redis会为监听端口的Server Socket的fd在事件循环中注册读就绪事件，并添加相应的handler进行处理。 123456789101112131415void initServer(void) &amp;#123;    ......    // 为监听的端口的fd设置epoll事件和回调， 针对TCP socket    /* Create an event handler for acc">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/2018/12/20/Redis源码阅读笔记-命令的接收和执行过程-一/acceptTcpHandler流程.png">
+<meta property="og:updated_time" content="2018-12-20T07:55:14.953Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis源码阅读笔记-命令的接收和执行过程(一)">
+<meta name="twitter:description" content="Redis会为监听端口的Server Socket的fd在事件循环中注册读就绪事件，并添加相应的handler进行处理。 123456789101112131415void initServer(void) &amp;#123;    ......    // 为监听的端口的fd设置epoll事件和回调， 针对TCP socket    /* Create an event handler for acc">
+<meta name="twitter:image" content="http://yoursite.com/2018/12/20/Redis源码阅读笔记-命令的接收和执行过程-一/acceptTcpHandler流程.png">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/12/20/Redis源码阅读笔记-命令的接收和执行过程-一/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Redis源码阅读笔记-命令的接收和执行过程(一) | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/12/20/Redis源码阅读笔记-命令的接收和执行过程-一/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis源码阅读笔记-命令的接收和执行过程(一)
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-12-20 15:52:55 / 修改时间：15:55:14" itemprop="dateCreated datePublished" datetime="2018-12-20T15:52:55+08:00">2018-12-20</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Reids/" itemprop="url" rel="index"><span itemprop="name">Reids</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Reids/阅读笔记/" itemprop="url" rel="index"><span itemprop="name">阅读笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>Redis会为监听端口的Server Socket的fd在<a href="http://blog.mingforpc.me/2018/12/18/Redis%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0-%E4%BA%8B%E4%BB%B6%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF/" target="_blank" rel="noopener">事件循环</a>中注册读就绪事件，并添加相应的handler进行处理。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">initServer</span><span class="params">(<span class="keyword">void</span>)</span> </span>&#123;</span><br><span class="line">    ......</span><br><span class="line">    <span class="comment">// 为监听的端口的fd设置epoll事件和回调， 针对TCP socket</span></span><br><span class="line">    <span class="comment">/* Create an event handler for accepting new connections in TCP and Unix</span></span><br><span class="line"><span class="comment">     * domain sockets. */</span></span><br><span class="line">    <span class="keyword">for</span> (j = <span class="number">0</span>; j &lt; server.ipfd_count; j++) &#123;</span><br><span class="line">        <span class="keyword">if</span> (aeCreateFileEvent(server.el, server.ipfd[j], AE_READABLE,</span><br><span class="line">            acceptTcpHandler,<span class="literal">NULL</span>) == AE_ERR)</span><br><span class="line">            &#123;</span><br><span class="line">                serverPanic(</span><br><span class="line">                    <span class="string">"Unrecoverable error creating server.ipfd file event."</span>);</span><br><span class="line">            &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>同时也会为客户端连接的Client Socket的fd在事件循环中注册相应的读写事件，并添加与之相对的handler进行处理。</p>
+<p>比如接收到一个客户端连接，创建并注册读就绪事件:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">client *<span class="title">createClient</span><span class="params">(<span class="keyword">int</span> fd)</span> </span>&#123;</span><br><span class="line">    client *c = zmalloc(<span class="keyword">sizeof</span>(client));</span><br><span class="line"></span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (fd != <span class="number">-1</span>) &#123;</span><br><span class="line">        anetNonBlock(<span class="literal">NULL</span>,fd);</span><br><span class="line">        anetEnableTcpNoDelay(<span class="literal">NULL</span>,fd);</span><br><span class="line">        <span class="keyword">if</span> (server.tcpkeepalive)</span><br><span class="line">            anetKeepAlive(<span class="literal">NULL</span>,fd,server.tcpkeepalive);</span><br><span class="line">        <span class="comment">// 注册事件</span></span><br><span class="line">        <span class="keyword">if</span> (aeCreateFileEvent(server.el,fd,AE_READABLE,</span><br><span class="line">            readQueryFromClient, c) == AE_ERR)</span><br><span class="line">        &#123;</span><br><span class="line">            close(fd);</span><br><span class="line">            zfree(c);</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>下面会分开两个方向写:</p>
+<ul>
+<li>Server Socket接收到Client会如何处理</li>
+<li>Client是如何接收命令和执行并响应的</li>
+</ul>
+<p>会以TCP连接为主。</p>
+<h2 id="接收Client的连接"><a href="#接收Client的连接" class="headerlink" title="接收Client的连接"></a>接收Client的连接</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// networking.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 当Server Socket接收到客户端连接，就会有AE_READABLE的事件，然后就会调用该Handler</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">acceptTcpHandler</span><span class="params">(aeEventLoop *el, <span class="keyword">int</span> fd, <span class="keyword">void</span> *privdata, <span class="keyword">int</span> mask)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> cport, cfd, max = MAX_ACCEPTS_PER_CALL;</span><br><span class="line">    <span class="keyword">char</span> cip[NET_IP_STR_LEN];</span><br><span class="line">    UNUSED(el);</span><br><span class="line">    UNUSED(mask);</span><br><span class="line">    UNUSED(privdata);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 一个限制，每次事件循环，只接受最多MAX_ACCEPTS_PER_CALL(1000)个Client进行处理</span></span><br><span class="line">    <span class="comment">// 防止短时间内要处理过多的Client</span></span><br><span class="line">    <span class="keyword">while</span>(max--) &#123;</span><br><span class="line">        <span class="comment">// anetTcpAccept()是一个Socket操作的封装，里面调用了accept()将Client Socket的fd返回，</span></span><br><span class="line">        <span class="comment">// 并返回远端的IP和端口号</span></span><br><span class="line">        cfd = anetTcpAccept(server.neterr, fd, cip, <span class="keyword">sizeof</span>(cip), &amp;cport);</span><br><span class="line">        <span class="keyword">if</span> (cfd == ANET_ERR) &#123;</span><br><span class="line">            <span class="keyword">if</span> (errno != EWOULDBLOCK)</span><br><span class="line">                serverLog(LL_WARNING,</span><br><span class="line">                    <span class="string">"Accepting client connection: %s"</span>, server.neterr);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        serverLog(LL_VERBOSE,<span class="string">"Accepted %s:%d"</span>, cip, cport);</span><br><span class="line">        <span class="comment">// 获取到的Client Socket的fd会进入acceptCommonHandler()进行处理</span></span><br><span class="line">        <span class="comment">// 会进行一些判断Redis是否已经超过了最大连接数等处理</span></span><br><span class="line">        <span class="comment">// 如果没错误的话，会将其封装成client结构体，放入server.clients中</span></span><br><span class="line">        acceptCommonHandler(cfd,<span class="number">0</span>,cip);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">acceptCommonHandler</span><span class="params">(<span class="keyword">int</span> fd, <span class="keyword">int</span> flags, <span class="keyword">char</span> *ip)</span> </span>&#123;</span><br><span class="line">    client *c;</span><br><span class="line">    <span class="comment">// 将Client Socket的fd封装创建个一个client结构</span></span><br><span class="line">    <span class="comment">// 会在createClient()中将fd注册事件循环的读就绪事件</span></span><br><span class="line">    <span class="keyword">if</span> ((c = createClient(fd)) == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        serverLog(LL_WARNING,</span><br><span class="line">            <span class="string">"Error registering fd event for the new client: %s (fd=%d)"</span>,</span><br><span class="line">            strerror(errno),fd);</span><br><span class="line">        close(fd); <span class="comment">/* May be already closed, just ignore errors */</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果超过最大连接数,将会发送错误给客户端（忽略错误），并断开连接</span></span><br><span class="line">    <span class="comment">/* If maxclient directive is set and this is one client more... close the</span></span><br><span class="line"><span class="comment">     * connection. Note that we create the client instead to check before</span></span><br><span class="line"><span class="comment">     * for this condition, since now the socket is already set in non-blocking</span></span><br><span class="line"><span class="comment">     * mode and we can send an error for free using the Kernel I/O */</span></span><br><span class="line">    <span class="keyword">if</span> (listLength(server.clients) &gt; server.maxclients) &#123;</span><br><span class="line">        <span class="keyword">char</span> *err = <span class="string">"-ERR max number of clients reached\r\n"</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 忽略发送数据的结果</span></span><br><span class="line">        <span class="comment">/* That's a best effort error message, don't check write errors */</span></span><br><span class="line">        <span class="keyword">if</span> (write(c-&gt;fd,err,<span class="built_in">strlen</span>(err)) == <span class="number">-1</span>) &#123;</span><br><span class="line">            <span class="comment">/* Nothing to do, Just to avoid the warning... */</span></span><br><span class="line">        &#125;</span><br><span class="line">        server.stat_rejected_conn++;</span><br><span class="line">        <span class="comment">// 断开client c的连接</span></span><br><span class="line">        <span class="comment">// 会关闭socket，并注销所有事件循环的事件</span></span><br><span class="line">        freeClient(c);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* If the server is running in protected mode (the default) and there</span></span><br><span class="line"><span class="comment">     * is no password set, nor a specific interface is bound, we don't accept</span></span><br><span class="line"><span class="comment">     * requests from non loopback interfaces. Instead we try to explain the</span></span><br><span class="line"><span class="comment">     * user what to do to fix it if needed. */</span></span><br><span class="line">    <span class="comment">// 如果Redis是在 protected mode</span></span><br><span class="line">    <span class="comment">// 且 没有绑定固定端口</span></span><br><span class="line">    <span class="comment">// 且 没有设置访问密码</span></span><br><span class="line">    <span class="comment">// 且 不是来之Unix Socket的连接</span></span><br><span class="line">    <span class="comment">// 且 ip 不为空</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (server.protected_mode &amp;&amp;</span><br><span class="line">        server.bindaddr_count == <span class="number">0</span> &amp;&amp;</span><br><span class="line">        server.requirepass == <span class="literal">NULL</span> &amp;&amp;</span><br><span class="line">        !(flags &amp; CLIENT_UNIX_SOCKET) &amp;&amp;</span><br><span class="line">        ip != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 那么就会尝试判断ip是否为本地连接，如果不是就断开连接（因为不安全啊~）</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">strcmp</span>(ip,<span class="string">"127.0.0.1"</span>) &amp;&amp; <span class="built_in">strcmp</span>(ip,<span class="string">"::1"</span>)) &#123;</span><br><span class="line">            <span class="keyword">char</span> *err =</span><br><span class="line">                <span class="string">"-DENIED Redis is running in protected mode because protected "</span></span><br><span class="line">                <span class="string">"mode is enabled, no bind address was specified, no "</span></span><br><span class="line">                <span class="string">"authentication password is requested to clients. In this mode "</span></span><br><span class="line">                <span class="string">"connections are only accepted from the loopback interface. "</span></span><br><span class="line">                <span class="string">"If you want to connect from external computers to Redis you "</span></span><br><span class="line">                <span class="string">"may adopt one of the following solutions: "</span></span><br><span class="line">                <span class="string">"1) Just disable protected mode sending the command "</span></span><br><span class="line">                <span class="string">"'CONFIG SET protected-mode no' from the loopback interface "</span></span><br><span class="line">                <span class="string">"by connecting to Redis from the same host the server is "</span></span><br><span class="line">                <span class="string">"running, however MAKE SURE Redis is not publicly accessible "</span></span><br><span class="line">                <span class="string">"from internet if you do so. Use CONFIG REWRITE to make this "</span></span><br><span class="line">                <span class="string">"change permanent. "</span></span><br><span class="line">                <span class="string">"2) Alternatively you can just disable the protected mode by "</span></span><br><span class="line">                <span class="string">"editing the Redis configuration file, and setting the protected "</span></span><br><span class="line">                <span class="string">"mode option to 'no', and then restarting the server. "</span></span><br><span class="line">                <span class="string">"3) If you started the server manually just for testing, restart "</span></span><br><span class="line">                <span class="string">"it with the '--protected-mode no' option. "</span></span><br><span class="line">                <span class="string">"4) Setup a bind address or an authentication password. "</span></span><br><span class="line">                <span class="string">"NOTE: You only need to do one of the above things in order for "</span></span><br><span class="line">                <span class="string">"the server to start accepting connections from the outside.\r\n"</span>;</span><br><span class="line">            <span class="keyword">if</span> (write(c-&gt;fd,err,<span class="built_in">strlen</span>(err)) == <span class="number">-1</span>) &#123;</span><br><span class="line">                <span class="comment">/* Nothing to do, Just to avoid the warning... */</span></span><br><span class="line">            &#125;</span><br><span class="line">            server.stat_rejected_conn++;</span><br><span class="line">            freeClient(c);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 连接数+1</span></span><br><span class="line">    server.stat_numconnections++;</span><br><span class="line">    c-&gt;flags |= flags;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h3><p><img src="/2018/12/20/Redis源码阅读笔记-命令的接收和执行过程-一/./acceptTcpHandler流程.png" alt="acceptTcpHandler流程"></p>
+<h3 id="client的结构"><a href="#client的结构" class="headerlink" title="client的结构"></a><code>client</code>的结构</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* With multiplexing we need to take per-client state.</span></span><br><span class="line"><span class="comment"> * Clients are taken in a linked list. */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">client</span> &#123;</span></span><br><span class="line">    <span class="keyword">uint64_t</span> id;            <span class="comment">/* Client incremental unique ID. */</span></span><br><span class="line">    <span class="keyword">int</span> fd;                 <span class="comment">/* Client socket. */</span></span><br><span class="line">    redisDb *db;            <span class="comment">/* Pointer to currently SELECTed DB. */</span></span><br><span class="line">    robj *name;             <span class="comment">/* As set by CLIENT SETNAME. */</span></span><br><span class="line">    sds querybuf;           <span class="comment">/* Buffer we use to accumulate client queries. */</span></span><br><span class="line">    <span class="keyword">size_t</span> qb_pos;          <span class="comment">/* The position we have read in querybuf. */</span></span><br><span class="line">    sds pending_querybuf;   <span class="comment">/* If this client is flagged as master, this buffer</span></span><br><span class="line"><span class="comment">                               represents the yet not applied portion of the</span></span><br><span class="line"><span class="comment">                               replication stream that we are receiving from</span></span><br><span class="line"><span class="comment">                               the master. */</span></span><br><span class="line">    <span class="keyword">size_t</span> querybuf_peak;   <span class="comment">/* Recent (100ms or more) peak of querybuf size. */</span></span><br><span class="line">    <span class="keyword">int</span> argc;               <span class="comment">/* Num of arguments of current command. */</span></span><br><span class="line">    robj **argv;            <span class="comment">/* Arguments of current command. */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">redisCommand</span> *<span class="title">cmd</span>, *<span class="title">lastcmd</span>;</span>  <span class="comment">/* Last command executed. */</span></span><br><span class="line">    <span class="keyword">int</span> reqtype;            <span class="comment">/* Request protocol type: PROTO_REQ_* */</span></span><br><span class="line">    <span class="keyword">int</span> multibulklen;       <span class="comment">/* Number of multi bulk arguments left to read. */</span></span><br><span class="line">    <span class="keyword">long</span> bulklen;           <span class="comment">/* Length of bulk argument in multi bulk request. */</span></span><br><span class="line">    <span class="built_in">list</span> *reply;            <span class="comment">/* List of reply objects to send to the client. */</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span> reply_bytes; <span class="comment">/* Tot bytes of objects in reply list. */</span></span><br><span class="line">    <span class="keyword">size_t</span> sentlen;         <span class="comment">/* Amount of bytes already sent in the current</span></span><br><span class="line"><span class="comment">                               buffer or object being sent. */</span></span><br><span class="line">    <span class="keyword">time_t</span> ctime;           <span class="comment">/* Client creation time. */</span></span><br><span class="line">    <span class="keyword">time_t</span> lastinteraction; <span class="comment">/* Time of the last interaction, used for timeout */</span></span><br><span class="line">    <span class="keyword">time_t</span> obuf_soft_limit_reached_time;</span><br><span class="line">    <span class="keyword">int</span> flags;              <span class="comment">/* Client flags: CLIENT_* macros. */</span></span><br><span class="line">    <span class="keyword">int</span> authenticated;      <span class="comment">/* When requirepass is non-NULL. */</span></span><br><span class="line">    <span class="keyword">int</span> replstate;          <span class="comment">/* Replication state if this is a slave. */</span></span><br><span class="line">    <span class="keyword">int</span> repl_put_online_on_ack; <span class="comment">/* Install slave write handler on ACK. */</span></span><br><span class="line">    <span class="keyword">int</span> repldbfd;           <span class="comment">/* Replication DB file descriptor. */</span></span><br><span class="line">    <span class="keyword">off_t</span> repldboff;        <span class="comment">/* Replication DB file offset. */</span></span><br><span class="line">    <span class="keyword">off_t</span> repldbsize;       <span class="comment">/* Replication DB file size. */</span></span><br><span class="line">    sds replpreamble;       <span class="comment">/* Replication DB preamble. */</span></span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> read_reploff; <span class="comment">/* Read replication offset if this is a master. */</span></span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> reploff;      <span class="comment">/* Applied replication offset if this is a master. */</span></span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> repl_ack_off; <span class="comment">/* Replication ack offset, if this is a slave. */</span></span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> repl_ack_time;<span class="comment">/* Replication ack time, if this is a slave. */</span></span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> psync_initial_offset; <span class="comment">/* FULLRESYNC reply offset other slaves</span></span><br><span class="line"><span class="comment">                                       copying this slave output buffer</span></span><br><span class="line"><span class="comment">                                       should use. */</span></span><br><span class="line">    <span class="keyword">char</span> replid[CONFIG_RUN_ID_SIZE+<span class="number">1</span>]; <span class="comment">/* Master replication ID (if master). */</span></span><br><span class="line">    <span class="keyword">int</span> slave_listening_port; <span class="comment">/* As configured with: SLAVECONF listening-port */</span></span><br><span class="line">    <span class="keyword">char</span> slave_ip[NET_IP_STR_LEN]; <span class="comment">/* Optionally given by REPLCONF ip-address */</span></span><br><span class="line">    <span class="keyword">int</span> slave_capa;         <span class="comment">/* Slave capabilities: SLAVE_CAPA_* bitwise OR. */</span></span><br><span class="line">    multiState mstate;      <span class="comment">/* MULTI/EXEC state */</span></span><br><span class="line">    <span class="keyword">int</span> btype;              <span class="comment">/* Type of blocking op if CLIENT_BLOCKED. */</span></span><br><span class="line">    blockingState bpop;     <span class="comment">/* blocking state */</span></span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> woff;         <span class="comment">/* Last write global replication offset. */</span></span><br><span class="line">    <span class="built_in">list</span> *watched_keys;     <span class="comment">/* Keys WATCHED for MULTI/EXEC CAS */</span></span><br><span class="line">    dict *pubsub_channels;  <span class="comment">/* channels a client is interested in (SUBSCRIBE) */</span></span><br><span class="line">    <span class="built_in">list</span> *pubsub_patterns;  <span class="comment">/* patterns a client is interested in (SUBSCRIBE) */</span></span><br><span class="line">    sds peerid;             <span class="comment">/* Cached peer ID. */</span></span><br><span class="line">    listNode *client_list_node; <span class="comment">/* list node in client list */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Response buffer */</span></span><br><span class="line">    <span class="keyword">int</span> bufpos;</span><br><span class="line">    <span class="keyword">char</span> buf[PROTO_REPLY_CHUNK_BYTES];</span><br><span class="line">&#125; client;</span><br></pre></td></tr></table></figure>
+<p>PS: 有注释就懒得写了，而且部分属性我还没细看</p>
+<h4 id="创建client-createClient-int-fd"><a href="#创建client-createClient-int-fd" class="headerlink" title="创建client *createClient(int fd)"></a>创建<code>client *createClient(int fd)</code></h4><p><code>createClient()</code>的主要功能是传入Client Socket的fd，用来初始化创建一个client，client中记录则该连接的一些操作数据，比如<code>WATCH KEY</code>的列表等。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// networking.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 传入Client Socket的fd，用来初始化创建一个client</span></span><br><span class="line"><span class="function">client *<span class="title">createClient</span><span class="params">(<span class="keyword">int</span> fd)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 申请内存</span></span><br><span class="line">    client *c = zmalloc(<span class="keyword">sizeof</span>(client));</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* passing -1 as fd it is possible to create a non connected client.</span></span><br><span class="line"><span class="comment">     * This is useful since all the commands needs to be executed</span></span><br><span class="line"><span class="comment">     * in the context of a client. When commands are executed in other</span></span><br><span class="line"><span class="comment">     * contexts (for instance a Lua script) we need a non connected client. */</span></span><br><span class="line">    <span class="keyword">if</span> (fd != <span class="number">-1</span>) &#123;</span><br><span class="line">        <span class="comment">// 将Client Socket设成非阻塞模式(epoll等需要)</span></span><br><span class="line">        anetNonBlock(<span class="literal">NULL</span>,fd);</span><br><span class="line">        <span class="comment">// 关闭TCP的Nagle算法，使得能更快响应客户端的请求</span></span><br><span class="line">        anetEnableTcpNoDelay(<span class="literal">NULL</span>,fd);</span><br><span class="line">        <span class="comment">// 开启keepalive</span></span><br><span class="line">        <span class="keyword">if</span> (server.tcpkeepalive)</span><br><span class="line">            anetKeepAlive(<span class="literal">NULL</span>,fd,server.tcpkeepalive);</span><br><span class="line">        <span class="comment">// 为客户端注册读就绪事件，并注册handler</span></span><br><span class="line">        <span class="keyword">if</span> (aeCreateFileEvent(server.el,fd,AE_READABLE,</span><br><span class="line">            readQueryFromClient, c) == AE_ERR)</span><br><span class="line">        &#123;</span><br><span class="line">            close(fd);</span><br><span class="line">            zfree(c);</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 初始化client的各个参数</span></span><br><span class="line">    selectDb(c,<span class="number">0</span>);</span><br><span class="line">    <span class="keyword">uint64_t</span> client_id;</span><br><span class="line">    atomicGetIncr(server.next_client_id,client_id,<span class="number">1</span>);</span><br><span class="line">    c-&gt;id = client_id;</span><br><span class="line">    c-&gt;fd = fd;</span><br><span class="line">    c-&gt;name = <span class="literal">NULL</span>;</span><br><span class="line">    c-&gt;bufpos = <span class="number">0</span>;</span><br><span class="line">    c-&gt;qb_pos = <span class="number">0</span>;</span><br><span class="line">    c-&gt;querybuf = sdsempty();</span><br><span class="line">    c-&gt;pending_querybuf = sdsempty();</span><br><span class="line">    c-&gt;querybuf_peak = <span class="number">0</span>;</span><br><span class="line">    c-&gt;reqtype = <span class="number">0</span>;</span><br><span class="line">    c-&gt;argc = <span class="number">0</span>;</span><br><span class="line">    c-&gt;argv = <span class="literal">NULL</span>;</span><br><span class="line">    c-&gt;cmd = c-&gt;lastcmd = <span class="literal">NULL</span>;</span><br><span class="line">    c-&gt;multibulklen = <span class="number">0</span>;</span><br><span class="line">    c-&gt;bulklen = <span class="number">-1</span>;</span><br><span class="line">    c-&gt;sentlen = <span class="number">0</span>;</span><br><span class="line">    c-&gt;flags = <span class="number">0</span>;</span><br><span class="line">    c-&gt;ctime = c-&gt;lastinteraction = server.unixtime;</span><br><span class="line">    c-&gt;authenticated = <span class="number">0</span>;</span><br><span class="line">    c-&gt;replstate = REPL_STATE_NONE;</span><br><span class="line">    c-&gt;repl_put_online_on_ack = <span class="number">0</span>;</span><br><span class="line">    c-&gt;reploff = <span class="number">0</span>;</span><br><span class="line">    c-&gt;read_reploff = <span class="number">0</span>;</span><br><span class="line">    c-&gt;repl_ack_off = <span class="number">0</span>;</span><br><span class="line">    c-&gt;repl_ack_time = <span class="number">0</span>;</span><br><span class="line">    c-&gt;slave_listening_port = <span class="number">0</span>;</span><br><span class="line">    c-&gt;slave_ip[<span class="number">0</span>] = <span class="string">'\0'</span>;</span><br><span class="line">    c-&gt;slave_capa = SLAVE_CAPA_NONE;</span><br><span class="line">    c-&gt;reply = listCreate();</span><br><span class="line">    c-&gt;reply_bytes = <span class="number">0</span>;</span><br><span class="line">    c-&gt;obuf_soft_limit_reached_time = <span class="number">0</span>;</span><br><span class="line">    listSetFreeMethod(c-&gt;reply,freeClientReplyValue);</span><br><span class="line">    listSetDupMethod(c-&gt;reply,dupClientReplyValue);</span><br><span class="line">    c-&gt;btype = BLOCKED_NONE;</span><br><span class="line">    c-&gt;bpop.timeout = <span class="number">0</span>;</span><br><span class="line">    c-&gt;bpop.keys = dictCreate(&amp;objectKeyHeapPointerValueDictType,<span class="literal">NULL</span>);</span><br><span class="line">    c-&gt;bpop.target = <span class="literal">NULL</span>;</span><br><span class="line">    c-&gt;bpop.xread_group = <span class="literal">NULL</span>;</span><br><span class="line">    c-&gt;bpop.xread_consumer = <span class="literal">NULL</span>;</span><br><span class="line">    c-&gt;bpop.xread_group_noack = <span class="number">0</span>;</span><br><span class="line">    c-&gt;bpop.numreplicas = <span class="number">0</span>;</span><br><span class="line">    c-&gt;bpop.reploffset = <span class="number">0</span>;</span><br><span class="line">    c-&gt;woff = <span class="number">0</span>;</span><br><span class="line">    c-&gt;watched_keys = listCreate();</span><br><span class="line">    c-&gt;pubsub_channels = dictCreate(&amp;objectKeyPointerValueDictType,<span class="literal">NULL</span>);</span><br><span class="line">    c-&gt;pubsub_patterns = listCreate();</span><br><span class="line">    c-&gt;peerid = <span class="literal">NULL</span>;</span><br><span class="line">    c-&gt;client_list_node = <span class="literal">NULL</span>;</span><br><span class="line">    listSetFreeMethod(c-&gt;pubsub_patterns,decrRefCountVoid);</span><br><span class="line">    listSetMatchMethod(c-&gt;pubsub_patterns,listMatchObjects);</span><br><span class="line">    <span class="keyword">if</span> (fd != <span class="number">-1</span>) linkClient(c);</span><br><span class="line">    initClientMultiState(c);</span><br><span class="line">    <span class="keyword">return</span> c;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="释放void-freeClient-client-c"><a href="#释放void-freeClient-client-c" class="headerlink" title="释放void freeClient(client *c)"></a>释放<code>void freeClient(client *c)</code></h4><p><code>freeClient()</code>是释放client，断开连接，释放缓存等操作。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// networking.c</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">freeClient</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    listNode *ln;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* If a client is protected, yet we need to free it right now, make sure</span></span><br><span class="line"><span class="comment">     * to at least use asynchronous freeing. */</span></span><br><span class="line">    <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_PROTECTED) &#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 将client添加到 erver.clients_to_close中</span></span><br><span class="line">        <span class="comment">// 等时间事件serverCron，调用freeClientsInAsyncFreeQueue()来释放里面的连接</span></span><br><span class="line">        freeClientAsync(c);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* If it is our master that's beging disconnected we should make sure</span></span><br><span class="line"><span class="comment">     * to cache the state to try a partial resynchronization later.</span></span><br><span class="line"><span class="comment">     *</span></span><br><span class="line"><span class="comment">     * Note that before doing this we make sure that the client is not in</span></span><br><span class="line"><span class="comment">     * some unexpected state, by checking its flags. */</span></span><br><span class="line">    <span class="comment">// 与Master断开的处理</span></span><br><span class="line">    <span class="keyword">if</span> (server.master &amp;&amp; c-&gt;flags &amp; CLIENT_MASTER) &#123;</span><br><span class="line">        serverLog(LL_WARNING,<span class="string">"Connection with master lost."</span>);</span><br><span class="line">        <span class="keyword">if</span> (!(c-&gt;flags &amp; (CLIENT_CLOSE_AFTER_REPLY|</span><br><span class="line">                          CLIENT_CLOSE_ASAP|</span><br><span class="line">                          CLIENT_BLOCKED)))</span><br><span class="line">        &#123;</span><br><span class="line">            replicationCacheMaster(c);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 与 Slave 断开连接的处理</span></span><br><span class="line">    <span class="comment">/* Log link disconnection with slave */</span></span><br><span class="line">    <span class="keyword">if</span> ((c-&gt;flags &amp; CLIENT_SLAVE) &amp;&amp; !(c-&gt;flags &amp; CLIENT_MONITOR)) &#123;</span><br><span class="line">        serverLog(LL_WARNING,<span class="string">"Connection with replica %s lost."</span>,</span><br><span class="line">            replicationGetSlaveName(c));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 下面就是释放各种内存等操作了 */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Free the query buffer */</span></span><br><span class="line">    sdsfree(c-&gt;querybuf);</span><br><span class="line">    sdsfree(c-&gt;pending_querybuf);</span><br><span class="line">    c-&gt;querybuf = <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Deallocate structures used to block on blocking ops. */</span></span><br><span class="line">    <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_BLOCKED) unblockClient(c);</span><br><span class="line">    dictRelease(c-&gt;bpop.keys);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* UNWATCH all the keys */</span></span><br><span class="line">    unwatchAllKeys(c);</span><br><span class="line">    listRelease(c-&gt;watched_keys);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Unsubscribe from all the pubsub channels */</span></span><br><span class="line">    pubsubUnsubscribeAllChannels(c,<span class="number">0</span>);</span><br><span class="line">    pubsubUnsubscribeAllPatterns(c,<span class="number">0</span>);</span><br><span class="line">    dictRelease(c-&gt;pubsub_channels);</span><br><span class="line">    listRelease(c-&gt;pubsub_patterns);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Free data structures. */</span></span><br><span class="line">    listRelease(c-&gt;reply);</span><br><span class="line">    freeClientArgv(c);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Unlink the client: this will close the socket, remove the I/O</span></span><br><span class="line"><span class="comment">     * handlers, and remove references of the client from different</span></span><br><span class="line"><span class="comment">     * places where active clients may be referenced. */</span></span><br><span class="line">    <span class="comment">// 真正断开Socket的地方</span></span><br><span class="line">    unlinkClient(c);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Master/slave cleanup Case 1:</span></span><br><span class="line"><span class="comment">     * we lost the connection with a slave. */</span></span><br><span class="line">    <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_SLAVE) &#123;</span><br><span class="line">        <span class="keyword">if</span> (c-&gt;replstate == SLAVE_STATE_SEND_BULK) &#123;</span><br><span class="line">            <span class="keyword">if</span> (c-&gt;repldbfd != <span class="number">-1</span>) close(c-&gt;repldbfd);</span><br><span class="line">            <span class="keyword">if</span> (c-&gt;replpreamble) sdsfree(c-&gt;replpreamble);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">list</span> *l = (c-&gt;flags &amp; CLIENT_MONITOR) ? server.monitors : server.slaves;</span><br><span class="line">        ln = listSearchKey(l,c);</span><br><span class="line">        serverAssert(ln != <span class="literal">NULL</span>);</span><br><span class="line">        listDelNode(l,ln);</span><br><span class="line">        <span class="comment">/* We need to remember the time when we started to have zero</span></span><br><span class="line"><span class="comment">         * attached slaves, as after some time we'll free the replication</span></span><br><span class="line"><span class="comment">         * backlog. */</span></span><br><span class="line">        <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_SLAVE &amp;&amp; listLength(server.slaves) == <span class="number">0</span>)</span><br><span class="line">            server.repl_no_slaves_since = server.unixtime;</span><br><span class="line">        refreshGoodSlavesCount();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Master/slave cleanup Case 2:</span></span><br><span class="line"><span class="comment">     * we lost the connection with the master. */</span></span><br><span class="line">    <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_MASTER) replicationHandleMasterDisconnection();</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* If this client was scheduled for async freeing we need to remove it</span></span><br><span class="line"><span class="comment">     * from the queue. */</span></span><br><span class="line">    <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_CLOSE_ASAP) &#123;</span><br><span class="line">        ln = listSearchKey(server.clients_to_close,c);</span><br><span class="line">        serverAssert(ln != <span class="literal">NULL</span>);</span><br><span class="line">        listDelNode(server.clients_to_close,ln);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Release other dynamically allocated client structure fields,</span></span><br><span class="line"><span class="comment">     * and finally release the client structure itself. */</span></span><br><span class="line">    <span class="keyword">if</span> (c-&gt;name) decrRefCount(c-&gt;name);</span><br><span class="line">    zfree(c-&gt;argv);</span><br><span class="line">    freeClientMultiState(c);</span><br><span class="line">    sdsfree(c-&gt;peerid);</span><br><span class="line">    zfree(c);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="接收来之Client的命令"><a href="#接收来之Client的命令" class="headerlink" title="接收来之Client的命令"></a>接收来之Client的命令</h2><p>这里就是主要看，Client连接上之后，主要的处理流程。</p>
+<p>主要是从<code>createClient()</code>中，为客户端注册读就绪事件的<code>readQueryFromClient()</code>这个Handler开始。</p>
+<p>这里涉及到了Redis的通信协议，配合<a href="https://redis.io/topics/protocol" target="_blank" rel="noopener">https://redis.io/topics/protocol</a>食用才是正道。</p>
+<p>从上面链接可以得知，请求可以分为2种类型:</p>
+<ul>
+<li>INLINE: 单个请求</li>
+<li>MULTIBULK: 以<code>*</code>开头的多个请求</li>
+</ul>
+<p>整个调用流程大概为:</p>
+<ul>
+<li><code>readQueryFromClient()</code>, 客户端Client读就绪后，向Socket读取数据，并存入client的buf中，然后调用<code>processInputBufferAndReplicate()</code>。</li>
+<li><code>processInputBufferAndReplicate()</code>会根据client的类型（<strong>Master的Client</strong> 和 其他Client），分别调用<code>processInputBuffer()</code>对收到的数据进行处理，两种Client都调用<code>processInputBuffer()</code>，但是<strong>Master的Client</strong>需要额外处理。</li>
+<li><code>processInputBuffer()</code>会对数据进行一定处理，取出client的buf中未处理的数据，并判断请求的类型(INLINE/MULTIBULK)，并将数据的数量和值保存进<code>client-&gt;argc</code>和<code>client-&gt;argv</code>中，然后调用<code>processCommand()</code>（在<code>server.c</code>中）执行。</li>
+<li><code>processCommand()</code>是真正检查和执行命令的函数。</li>
+</ul>
+<p>PS: <code>processCommand()</code>后面单独写，主要是懒</p>
+<h3 id="readQueryFromClient"><a href="#readQueryFromClient" class="headerlink" title="readQueryFromClient()"></a><code>readQueryFromClient()</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 客户端Client读就绪后，调用的Handler</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">readQueryFromClient</span><span class="params">(aeEventLoop *el, <span class="keyword">int</span> fd, <span class="keyword">void</span> *privdata, <span class="keyword">int</span> mask)</span> </span>&#123;</span><br><span class="line">    client *c = (client*) privdata;</span><br><span class="line">    <span class="keyword">int</span> nread, readlen;</span><br><span class="line">    <span class="keyword">size_t</span> qblen;</span><br><span class="line">    UNUSED(el);</span><br><span class="line">    UNUSED(mask);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 默认的读取缓存大小</span></span><br><span class="line">    readlen = PROTO_IOBUF_LEN;</span><br><span class="line">    <span class="comment">/* If this is a multi bulk request, and we are processing a bulk reply</span></span><br><span class="line"><span class="comment">     * that is large enough, try to maximize the probability that the query</span></span><br><span class="line"><span class="comment">     * buffer contains exactly the SDS string representing the object, even</span></span><br><span class="line"><span class="comment">     * at the risk of requiring more read(2) calls. This way the function</span></span><br><span class="line"><span class="comment">     * processMultiBulkBuffer() can avoid copying buffers to create the</span></span><br><span class="line"><span class="comment">     * Redis Object representing the argument. */</span></span><br><span class="line">    <span class="comment">// 如果是一个批量请求</span></span><br><span class="line">    <span class="keyword">if</span> (c-&gt;reqtype == PROTO_REQ_MULTIBULK &amp;&amp; c-&gt;multibulklen &amp;&amp; c-&gt;bulklen != <span class="number">-1</span></span><br><span class="line">        &amp;&amp; c-&gt;bulklen &gt;= PROTO_MBULK_BIG_ARG)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">ssize_t</span> remaining = (<span class="keyword">size_t</span>)(c-&gt;bulklen+<span class="number">2</span>)-sdslen(c-&gt;querybuf);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Note that the 'remaining' variable may be zero in some edge case,</span></span><br><span class="line"><span class="comment">         * for example once we resume a blocked client after CLIENT PAUSE. */</span></span><br><span class="line">        <span class="keyword">if</span> (remaining &gt; <span class="number">0</span> &amp;&amp; remaining &lt; readlen) readlen = remaining;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    qblen = sdslen(c-&gt;querybuf);</span><br><span class="line">    <span class="comment">// 查询query的长度最大值</span></span><br><span class="line">    <span class="keyword">if</span> (c-&gt;querybuf_peak &lt; qblen) c-&gt;querybuf_peak = qblen;</span><br><span class="line">    <span class="comment">// 扩大c-&gt;querybuf的SDS字符串到相应的长度</span></span><br><span class="line">    c-&gt;querybuf = sdsMakeRoomFor(c-&gt;querybuf, readlen);</span><br><span class="line">    <span class="comment">// socket中读取数据</span></span><br><span class="line">    nread = read(fd, c-&gt;querybuf+qblen, readlen);</span><br><span class="line">    <span class="keyword">if</span> (nread == <span class="number">-1</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (errno == EAGAIN) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            serverLog(LL_VERBOSE, <span class="string">"Reading from client: %s"</span>,strerror(errno));</span><br><span class="line">            freeClient(c);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (nread == <span class="number">0</span>) &#123;</span><br><span class="line">        serverLog(LL_VERBOSE, <span class="string">"Client closed connection"</span>);</span><br><span class="line">        freeClient(c);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_MASTER) &#123;</span><br><span class="line">        <span class="comment">/* Append the query buffer to the pending (not applied) buffer</span></span><br><span class="line"><span class="comment">         * of the master. We'll use this buffer later in order to have a</span></span><br><span class="line"><span class="comment">         * copy of the string applied by the last command executed. */</span></span><br><span class="line">        <span class="comment">// 复制拼接字符串，将`c-&gt;querybuf+qblen`后的数据，复制拼接到`c-&gt;pending_querybuf`后</span></span><br><span class="line">        <span class="comment">// master的连接是处理`c-&gt;pending_querybuf`的</span></span><br><span class="line">        c-&gt;pending_querybuf = sdscatlen(c-&gt;pending_querybuf,</span><br><span class="line">                                        c-&gt;querybuf+qblen,nread);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 更新sds的长度</span></span><br><span class="line">    sdsIncrLen(c-&gt;querybuf,nread);</span><br><span class="line">    c-&gt;lastinteraction = server.unixtime;</span><br><span class="line">    <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_MASTER) c-&gt;read_reploff += nread;</span><br><span class="line">    server.stat_net_input_bytes += nread;</span><br><span class="line">    <span class="comment">// 超过最大长度限制</span></span><br><span class="line">    <span class="keyword">if</span> (sdslen(c-&gt;querybuf) &gt; server.client_max_querybuf_len) &#123;</span><br><span class="line">        sds ci = catClientInfoString(sdsempty(),c), bytes = sdsempty();</span><br><span class="line"></span><br><span class="line">        bytes = sdscatrepr(bytes,c-&gt;querybuf,<span class="number">64</span>);</span><br><span class="line">        serverLog(LL_WARNING,<span class="string">"Closing client that reached max query buffer length: %s (qbuf initial bytes: %s)"</span>, ci, bytes);</span><br><span class="line">        sdsfree(ci);</span><br><span class="line">        sdsfree(bytes);</span><br><span class="line">        freeClient(c);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Time to process the buffer. If the client is a master we need to</span></span><br><span class="line"><span class="comment">     * compute the difference between the applied offset before and after</span></span><br><span class="line"><span class="comment">     * processing the buffer, to understand how much of the replication stream</span></span><br><span class="line"><span class="comment">     * was actually applied to the master state: this quantity, and its</span></span><br><span class="line"><span class="comment">     * corresponding part of the replication stream, will be propagated to</span></span><br><span class="line"><span class="comment">     * the sub-slaves and to the replication backlog. */</span></span><br><span class="line">    <span class="comment">// 处理接收到的数据</span></span><br><span class="line">    processInputBufferAndReplicate(c);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看到<code>readQueryFromClient()</code>的主要工作其实很简单，主要是从socket中读取数据，并将其存入<code>client-&gt;querybuf</code>中</p>
+<h3 id="processInputBufferAndReplicate"><a href="#processInputBufferAndReplicate" class="headerlink" title="processInputBufferAndReplicate()"></a><code>processInputBufferAndReplicate()</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* This is a wrapper for processInputBuffer that also cares about handling</span></span><br><span class="line"><span class="comment"> * the replication forwarding to the sub-slaves, in case the client 'c'</span></span><br><span class="line"><span class="comment"> * is flagged as master. Usually you want to call this instead of the</span></span><br><span class="line"><span class="comment"> * raw processInputBuffer(). */</span></span><br><span class="line"><span class="comment">// 对processInputBuffer()的封装，主要是master连接的处理差异</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">processInputBufferAndReplicate</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!(c-&gt;flags &amp; CLIENT_MASTER)) &#123;</span><br><span class="line">        <span class="comment">// 如果这个不是master的client连接</span></span><br><span class="line">        processInputBuffer(c);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">         <span class="comment">// master的client连接</span></span><br><span class="line">        <span class="keyword">size_t</span> prev_offset = c-&gt;reploff;</span><br><span class="line">        processInputBuffer(c);</span><br><span class="line">        <span class="keyword">size_t</span> applied = c-&gt;reploff - prev_offset;</span><br><span class="line">        <span class="comment">// applied是计算c-&gt;pending_querybuf处理了哪些数据，然后在使用sdsrange()清除已经被处理的</span></span><br><span class="line">        <span class="keyword">if</span> (applied) &#123;</span><br><span class="line">            <span class="comment">// 用户将数据代理到该Redis的slaves中</span></span><br><span class="line">            replicationFeedSlavesFromMasterStream(server.slaves,</span><br><span class="line">                    c-&gt;pending_querybuf, applied);</span><br><span class="line">            sdsrange(c-&gt;pending_querybuf,applied,<span class="number">-1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>processInputBufferAndReplicate()</code>主要是对<code>processInputBuffer()</code>进行一个封装，其实直接写在<code>readQueryFromClient()</code>也可以，但现在这么做，对于以后添加<code>c-&gt;flags</code>不同的处理时，更加直观。</p>
+<h3 id="processInputBuffer"><a href="#processInputBuffer" class="headerlink" title="processInputBuffer()"></a><code>processInputBuffer()</code></h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* This function is called every time, in the client structure 'c', there is</span></span><br><span class="line"><span class="comment"> * more query buffer to process, because we read more data from the socket</span></span><br><span class="line"><span class="comment"> * or because a client was blocked and later reactivated, so there could be</span></span><br><span class="line"><span class="comment"> * pending query buffer, already representing a full command, to process. */</span></span><br><span class="line"><span class="comment">// 读取数据，判断数据格式是否正确</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">processInputBuffer</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    server.current_client = c;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Keep processing while there is something in the input buffer */</span></span><br><span class="line">    <span class="comment">// `c-&gt;qb_pos`是已经读取的`c-&gt;querybuf`游标</span></span><br><span class="line">    <span class="comment">// 所以当`c-&gt;qb_pos` &gt;= `c-&gt;querybuf`时，就不需要处理了</span></span><br><span class="line">    <span class="keyword">while</span>(c-&gt;qb_pos &lt; sdslen(c-&gt;querybuf)) &#123;</span><br><span class="line">        <span class="comment">/* Return if clients are paused. */</span></span><br><span class="line">        <span class="comment">// 如果非slave连接，而且当前服务器的所有client都被暂停了</span></span><br><span class="line">        <span class="comment">// 则退出循环</span></span><br><span class="line">        <span class="keyword">if</span> (!(c-&gt;flags &amp; CLIENT_SLAVE) &amp;&amp; clientsArePaused()) <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// client 处于CLIENT_BLOCKED，中止</span></span><br><span class="line">        <span class="comment">// <span class="doctag">TODO:</span> 看看什么情况下会处于这个状态</span></span><br><span class="line">        <span class="comment">/* Immediately abort if the client is in the middle of something. */</span></span><br><span class="line">        <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_BLOCKED) <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Don't process input from the master while there is a busy script</span></span><br><span class="line"><span class="comment">         * condition on the slave. We want just to accumulate the replication</span></span><br><span class="line"><span class="comment">         * stream (instead of replying -BUSY like we do with other clients) and</span></span><br><span class="line"><span class="comment">         * later resume the processing. */</span></span><br><span class="line">        <span class="keyword">if</span> (server.lua_timedout &amp;&amp; c-&gt;flags &amp; CLIENT_MASTER) <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* CLIENT_CLOSE_AFTER_REPLY closes the connection once the reply is</span></span><br><span class="line"><span class="comment">         * written to the client. Make sure to not let the reply grow after</span></span><br><span class="line"><span class="comment">         * this flag has been set (i.e. don't process more commands).</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * The same applies for clients we want to terminate ASAP. */</span></span><br><span class="line">        <span class="comment">// CLIENT_CLOSE_AFTER_REPLY: 表示响应客户端的请求后断开连接</span></span><br><span class="line">        <span class="comment">// CLIENT_CLOSE_ASAP: 表示要断开这个连接</span></span><br><span class="line">        <span class="comment">// 所以 `CLIENT_CLOSE_AFTER_REPLY|CLIENT_CLOSE_ASAP`是已经响应请求，需要断开的连接</span></span><br><span class="line">        <span class="keyword">if</span> (c-&gt;flags &amp; (CLIENT_CLOSE_AFTER_REPLY|CLIENT_CLOSE_ASAP)) <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Determine request type when unknown. */</span></span><br><span class="line">        <span class="comment">// 判断命令的类型</span></span><br><span class="line">        <span class="keyword">if</span> (!c-&gt;reqtype) &#123;</span><br><span class="line">            <span class="comment">// 当client刚创建的时候`c-&gt;reqtype`默认为0（详细见`createClient()`）</span></span><br><span class="line">            <span class="comment">// 通过读数据的第一位判断是命令类型是MULTIBULK还是INLINE</span></span><br><span class="line">            <span class="comment">// 详细协议看 https://redis.io/topics/protocol</span></span><br><span class="line">            <span class="keyword">if</span> (c-&gt;querybuf[c-&gt;qb_pos] == <span class="string">'*'</span>) &#123;</span><br><span class="line">                c-&gt;reqtype = PROTO_REQ_MULTIBULK; </span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                c-&gt;reqtype = PROTO_REQ_INLINE;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (c-&gt;reqtype == PROTO_REQ_INLINE) &#123;</span><br><span class="line">            <span class="comment">// 处理INLINE请求的buffer</span></span><br><span class="line">            <span class="comment">// 其实就是处理好请求的命令数据，存进去`client-&gt;argc`和`client-&gt;argv`中</span></span><br><span class="line">            <span class="keyword">if</span> (processInlineBuffer(c) != C_OK) <span class="keyword">break</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (c-&gt;reqtype == PROTO_REQ_MULTIBULK) &#123;</span><br><span class="line">            <span class="comment">// 处理MULTIBULK请求</span></span><br><span class="line">            <span class="comment">// 与processInlineBuffer()处理的方式类似，当时协议格式不一样</span></span><br><span class="line">            <span class="keyword">if</span> (processMultibulkBuffer(c) != C_OK) <span class="keyword">break</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            serverPanic(<span class="string">"Unknown request type"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Multibulk processing could see a &lt;= 0 length. */</span></span><br><span class="line">        <span class="keyword">if</span> (c-&gt;argc == <span class="number">0</span>) &#123;</span><br><span class="line">            resetClient(c);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">/* Only reset the client when the command was executed. */</span></span><br><span class="line">            <span class="comment">// 调用server.c中的processCommand()函数执行命令</span></span><br><span class="line">            <span class="keyword">if</span> (processCommand(c) == C_OK) &#123;</span><br><span class="line">                <span class="keyword">if</span> (c-&gt;flags &amp; CLIENT_MASTER &amp;&amp; !(c-&gt;flags &amp; CLIENT_MULTI)) &#123;</span><br><span class="line">                    <span class="comment">/* Update the applied replication offset of our master. */</span></span><br><span class="line">                    c-&gt;reploff = c-&gt;read_reploff - sdslen(c-&gt;querybuf) + c-&gt;qb_pos;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">/* Don't reset the client structure for clients blocked in a</span></span><br><span class="line"><span class="comment">                 * module blocking command, so that the reply callback will</span></span><br><span class="line"><span class="comment">                 * still be able to access the client argv and argc field.</span></span><br><span class="line"><span class="comment">                 * The client will be reset in unblockClientFromModule(). */</span></span><br><span class="line">                <span class="keyword">if</span> (!(c-&gt;flags &amp; CLIENT_BLOCKED) || c-&gt;btype != BLOCKED_MODULE)</span><br><span class="line">                    resetClient(c);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">/* freeMemoryIfNeeded may flush slave output buffers. This may</span></span><br><span class="line"><span class="comment">             * result into a slave, that may be the active client, to be</span></span><br><span class="line"><span class="comment">             * freed. */</span></span><br><span class="line">            <span class="keyword">if</span> (server.current_client == <span class="literal">NULL</span>) <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Trim to pos */</span></span><br><span class="line">    <span class="keyword">if</span> (c-&gt;qb_pos) &#123;</span><br><span class="line">        <span class="comment">// 将已经处理的`c-&gt;querybuf`中的数据删除</span></span><br><span class="line">        sdsrange(c-&gt;querybuf,c-&gt;qb_pos,<span class="number">-1</span>);</span><br><span class="line">        c-&gt;qb_pos = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    server.current_client = <span class="literal">NULL</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>processInputBuffer()</code>最主要的工作就是对连接传入的数据，进行一定格式化（并没有检查内容），方便<code>processCommand()</code>调用，同时通过首字符，判断请求的类型（INLINE、MULTIBULK）。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/12/18/Redis源码阅读笔记-事件和事件循环/" rel="next" title="Redis源码阅读笔记-事件和事件循环">
+                <i class="fa fa-chevron-left"></i> Redis源码阅读笔记-事件和事件循环
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#接收Client的连接"><span class="nav-number">1.</span> <span class="nav-text">接收Client的连接</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#流程"><span class="nav-number">1.1.</span> <span class="nav-text">流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#client的结构"><span class="nav-number">1.2.</span> <span class="nav-text">client的结构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建client-createClient-int-fd"><span class="nav-number">1.2.1.</span> <span class="nav-text">创建client *createClient(int fd)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#释放void-freeClient-client-c"><span class="nav-number">1.2.2.</span> <span class="nav-text">释放void freeClient(client *c)</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#接收来之Client的命令"><span class="nav-number">2.</span> <span class="nav-text">接收来之Client的命令</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#readQueryFromClient"><span class="nav-number">2.1.</span> <span class="nav-text">readQueryFromClient()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#processInputBufferAndReplicate"><span class="nav-number">2.2.</span> <span class="nav-text">processInputBufferAndReplicate()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#processInputBuffer"><span class="nav-number">2.3.</span> <span class="nav-text">processInputBuffer()</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
