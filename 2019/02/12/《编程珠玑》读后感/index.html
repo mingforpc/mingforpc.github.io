@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="一直知道《编程珠玑》是一本很经典的编程书籍，其实很早已经入手了，但每次都是翻开前几章，就断开阅读了。虽然这次也是磨磨蹭蹭很久才把书过一遍，所以觉得应该书中的一些总结记录下来，毕竟简单的过一遍，就觉得满篇精华了。 书本一共分了3部分，分别为:  基础 性能 应用  所以我的读书笔记也跟着这个思路去写好了。 这仅仅是读书笔记，所以很多都是来自书上的内容了。 第一部分（基础）第一部分，我觉得是从一个程序">
+<meta property="og:type" content="article">
+<meta property="og:title" content="《编程珠玑》读书笔记">
+<meta property="og:url" content="http://yoursite.com/2019/02/12/《编程珠玑》读后感/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="一直知道《编程珠玑》是一本很经典的编程书籍，其实很早已经入手了，但每次都是翻开前几章，就断开阅读了。虽然这次也是磨磨蹭蹭很久才把书过一遍，所以觉得应该书中的一些总结记录下来，毕竟简单的过一遍，就觉得满篇精华了。 书本一共分了3部分，分别为:  基础 性能 应用  所以我的读书笔记也跟着这个思路去写好了。 这仅仅是读书笔记，所以很多都是来自书上的内容了。 第一部分（基础）第一部分，我觉得是从一个程序">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-02-13T14:53:55.718Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="《编程珠玑》读书笔记">
+<meta name="twitter:description" content="一直知道《编程珠玑》是一本很经典的编程书籍，其实很早已经入手了，但每次都是翻开前几章，就断开阅读了。虽然这次也是磨磨蹭蹭很久才把书过一遍，所以觉得应该书中的一些总结记录下来，毕竟简单的过一遍，就觉得满篇精华了。 书本一共分了3部分，分别为:  基础 性能 应用  所以我的读书笔记也跟着这个思路去写好了。 这仅仅是读书笔记，所以很多都是来自书上的内容了。 第一部分（基础）第一部分，我觉得是从一个程序">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/02/12/《编程珠玑》读后感/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>《编程珠玑》读书笔记 | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/02/12/《编程珠玑》读后感/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">《编程珠玑》读书笔记
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-02-12 23:07:08" itemprop="dateCreated datePublished" datetime="2019-02-12T23:07:08+08:00">2019-02-12</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-02-13 22:53:55" itemprop="dateModified" datetime="2019-02-13T22:53:55+08:00">2019-02-13</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/读书笔记/" itemprop="url" rel="index"><span itemprop="name">读书笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>一直知道《编程珠玑》是一本很经典的编程书籍，其实很早已经入手了，但每次都是翻开前几章，就断开阅读了。虽然这次也是磨磨蹭蹭很久才把书过一遍，所以觉得应该书中的一些总结记录下来，毕竟简单的过一遍，就觉得满篇精华了。</p>
+<p>书本一共分了3部分，分别为:</p>
+<ul>
+<li>基础</li>
+<li>性能</li>
+<li>应用</li>
+</ul>
+<p>所以我的读书笔记也跟着这个思路去写好了。</p>
+<p><strong>这仅仅是读书笔记，所以很多都是来自书上的内容了。</strong></p>
+<h2 id="第一部分（基础）"><a href="#第一部分（基础）" class="headerlink" title="第一部分（基础）"></a>第一部分（基础）</h2><p>第一部分，我觉得是从一个程序整体上看，如果编写一个好的程序。从第一章描述如何准确确定和描述需求（问题），到第二章算法在程序的重要性，第三章的程序代码的结构化，第四章的如何保证代码的正确，第五章的测试，都是从一个整体的角度观察程序。就像名字“基础”一样，这是第二部分的基础，如果无法保证代码的良好结构、正确性和测试，第二部分的性能优化根本是无法下手的。</p>
+<h3 id="分析问题的步骤"><a href="#分析问题的步骤" class="headerlink" title="分析问题的步骤"></a>分析问题的步骤</h3><ol>
+<li><p>正确的问题。要准确的问题描述，可以用下面三部分对问题进行概况:</p>
+<ul>
+<li>输入。问题提供的“参数”条件</li>
+<li>输出。问题想要得到的结果。</li>
+<li>约束。有哪些限制。</li>
+</ul>
+</li>
+<li><p>决定算法的采用，不要一开始就是用最“暴力”的解法。</p>
+</li>
+<li>最后才是代码的实现。</li>
+</ol>
+<h3 id="代码的结构的优化"><a href="#代码的结构的优化" class="headerlink" title="代码的结构的优化"></a>代码的结构的优化</h3><p>正确使用数据结构来是的代码更规范，以下是书中的几条原则:</p>
+<ul>
+<li><em>使用数组重新编写重复的代码</em>。书中的例子就是将许多同类型的相似对象，使用数组来保存，从而减少冗长且相似的代码（具体见第3章的内容）。</li>
+<li><em>封装复杂的结构</em>。当遇到复杂的数据结构时，尝试将其抽象定义成类，封装其操作。</li>
+<li><em>尽可能使用高级工具</em>。etc: 数据库，表格，k-v存储等。</li>
+<li><em>从数据得出程序的结构</em>。通过恰当的数据结构代替复杂的代码。所以在动手编写代码之前，应该彻底理解输入、输出和中间数据结构，然后围绕这些结构进行开发。</li>
+</ul>
+<h3 id="编写正确的函数"><a href="#编写正确的函数" class="headerlink" title="编写正确的函数"></a>编写正确的函数</h3><p>书中第4章，主要讲了怎么了写一个“正确”的程序，其要点是要通过一个<em>前置条件(precondition)</em>(调用函数之前的成立的状态)和<em>后置条件(postcondition)</em>(函数终止时的状态)来保证函数的正确型。就是在<em>前置条件(precondition)</em>满足的情况下调用函数，那么<em>后置条件(postcondition)</em>就已经确立了。就和我们开发时写的单元测试一样，编写各种情况下的参数，来确保函数最终结果的正确。</p>
+<h2 id="第二部分（性能）"><a href="#第二部分（性能）" class="headerlink" title="第二部分（性能）"></a>第二部分（性能）</h2><p>第二部分，主要讲3个问题:</p>
+<ol>
+<li>为什么性能会有问题应该优化什么方面 </li>
+<li>如何对性能进行一个评估 </li>
+<li>性能优化的3个着手点（算法，代码，空间）</li>
+</ol>
+<h3 id="性能分析"><a href="#性能分析" class="headerlink" title="性能分析"></a>性能分析</h3><p>影响性能的几个方面：</p>
+<ul>
+<li><em>系统结构</em>。将大型系统分解模块时，是决定性能的重要的单个因素。设计者需要完成简单的“粗略估算”。</li>
+<li><em>算法和数据结构</em>。算法和数据结构是获得快速模块或者函数的关键。</li>
+<li><em>代码调优</em>。对代码进行改进，有可能会有不错的加速。</li>
+<li><em>系统软件</em>。操作系统，编程语言等影响。</li>
+<li><em>硬件</em>。</li>
+</ul>
+<p>优化代码的着手点:</p>
+<ul>
+<li><em>如果仅需要较小的加速，就对效果最佳的层面做改进</em>。选择“性价比”最高的那个：投入最小的精力就可以获得最大加速系数的设计层面。</li>
+<li><em>如果需要较大的加速，就对多个层面做改进</em>。</li>
+</ul>
+<h3 id="性能的估算技巧"><a href="#性能的估算技巧" class="headerlink" title="性能的估算技巧"></a>性能的估算技巧</h3><ul>
+<li><em>两个答案比一个答案好</em>。从多个角度和方式进行估算，并比较结果。</li>
+<li><em>快速检查</em>。通过一些简单的方法，粗略计算一个值。</li>
+<li><em>经验</em>。</li>
+</ul>
+<h3 id="算法设计的几个要点（着手点）"><a href="#算法设计的几个要点（着手点）" class="headerlink" title="算法设计的几个要点（着手点）"></a>算法设计的几个要点（着手点）</h3><p>具体例子参考第8章。</p>
+<ul>
+<li><em>保存状态，避免重复计算</em>。可以通过使用一些空间来保存中间计算结果，避免重复计算的时间。</li>
+<li><em>将信息预处理至数据结构中</em>。</li>
+<li><em>分治算法</em>。</li>
+<li><em>扫描算法</em>。</li>
+<li><em>累加数组</em>。</li>
+<li><em>下界</em>。确定自己算法的下界。</li>
+</ul>
+<h2 id="第三部分（应用）"><a href="#第三部分（应用）" class="headerlink" title="第三部分（应用）"></a>第三部分（应用）</h2><p>第三部分这比较直接，描述了程序开发上常见问题的思路和一些优化和较好的方法。</p>
+<h2 id="巧妙的例子"><a href="#巧妙的例子" class="headerlink" title="巧妙的例子"></a>巧妙的例子</h2><h3 id="使用位图对不重复的非负整数进行排序"><a href="#使用位图对不重复的非负整数进行排序" class="headerlink" title="使用位图对不重复的非负整数进行排序"></a>使用位图对不重复的非负整数进行排序</h3><p>第1章的，举的例子是对大量已知上限的不重复的非负整数进行排序，使用了位图表示，使得时间复杂度仅仅是<code>O(n)</code>。</p>
+<h3 id="二分搜索"><a href="#二分搜索" class="headerlink" title="二分搜索"></a>二分搜索</h3><p>第2章中，二分搜索是可以用来判断给定值是否在已排序的数组中。</p>
+<p>初始条件是已知一个对象存在于一个给定范围内，而一次探测操作可以告诉我们该对象是否低于、等于或高于给定的未知。二分搜索通过重复探测当前范围的中点来定位对象。如果一次探测没有找到该对象，则将当前范围减半，然后继续下一次探测。当找到所需的对象或范围为空时停止。</p>
+<h3 id="数组的最大连续和"><a href="#数组的最大连续和" class="headerlink" title="数组的最大连续和"></a>数组的最大连续和</h3><p>第8中的一个例子。</p>
+<p>问题：</p>
+<p>给定一个数组，输出其任何连续项的最大和。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[31, -41, 59, 26, -53, 58, 97, -93, -23, 84]</span><br><span class="line">           ^                ^</span><br><span class="line">           |                |</span><br><span class="line">           2                6</span><br><span class="line">其最大和是x[2...6]的总和，即187。</span><br></pre></td></tr></table></figure>
+<p>其中共有3中解法：</p>
+<ol>
+<li>直接对满足<code>0 &lt;= i &lt;= j &lt;= n</code>的<code>(i,j)</code>进行迭代。但整体的时间复杂度还是<code>O(n^2)</code>。</li>
+<li>分治算法。（见书P86）</li>
+<li>扫描算法。</li>
+</ol>
+<h4 id="扫描算法"><a href="#扫描算法" class="headerlink" title="扫描算法"></a>扫描算法</h4><p>从数组最左端(<code>x[0]</code>)开始扫描，一直到最右端（<code>x[n-1]</code>）为止，并记下所遇到的总和最大的子向量。 最大总和的初始值设为0。假设我们已解决了<code>x[0...i-1]</code>的问题，那么如何将其扩展为包含<code>x[i]</code>的问题呢？我们使用类似于分治算法的原理：前<code>i</code>个元素中，最大总和子数组要么在前<code>i-1</code>个元素中（我们将其存储在<code>maxsofar</code>中），要么其结束位置为<code>i</code>（我们将其存储在<code>maxendinghere</code>中）。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">maxsofar = 0</span><br><span class="line">maxendinghere = 0</span><br><span class="line">for i = [0, n)</span><br><span class="line">    /* invariant: maxendinghere and maxsofar are accurate for x[0...i-1]/</span><br><span class="line">    maxendinghere = max(maxendinghere + x[i], 0)</span><br><span class="line">    maxsofar = max(maxsofar, maxendinghere)</span><br></pre></td></tr></table></figure>
+<p>理解这个程序的关键在于变量<code>maxendinghere</code>。在循环中的第一个赋值语句之前，<code>maxendinghere</code>是结束位置为<code>i- 1</code>的最大子向量的和；赋值语句将其修改为结束位置为 <code>i</code> 的最大子向量的和。若加上<code>x[i]</code>之后结果依然为正值，该赋值语句就将<code>maxendinghere</code>增大<code>x[i]</code>；若加上<code>x[i]</code>之后结果为负值，该赋值语句就将<code>maxendinghere</code>重新设为0（因为结束位置为<code>i</code>的最大子向量现在为空向量）。</p>
+<h4 id="稀疏矩阵取代二维数组"><a href="#稀疏矩阵取代二维数组" class="headerlink" title="稀疏矩阵取代二维数组"></a>稀疏矩阵取代二维数组</h4><p>第10章中的例子，使用稀疏矩阵取代了二维数组，以节省内存的使用。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/01/17/2019-1-阳朔/" rel="next" title="2019-1-阳朔">
+                <i class="fa fa-chevron-left"></i> 2019-1-阳朔
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#第一部分（基础）"><span class="nav-number">1.</span> <span class="nav-text">第一部分（基础）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分析问题的步骤"><span class="nav-number">1.1.</span> <span class="nav-text">分析问题的步骤</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#代码的结构的优化"><span class="nav-number">1.2.</span> <span class="nav-text">代码的结构的优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#编写正确的函数"><span class="nav-number">1.3.</span> <span class="nav-text">编写正确的函数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#第二部分（性能）"><span class="nav-number">2.</span> <span class="nav-text">第二部分（性能）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#性能分析"><span class="nav-number">2.1.</span> <span class="nav-text">性能分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#性能的估算技巧"><span class="nav-number">2.2.</span> <span class="nav-text">性能的估算技巧</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#算法设计的几个要点（着手点）"><span class="nav-number">2.3.</span> <span class="nav-text">算法设计的几个要点（着手点）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#第三部分（应用）"><span class="nav-number">3.</span> <span class="nav-text">第三部分（应用）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#巧妙的例子"><span class="nav-number">4.</span> <span class="nav-text">巧妙的例子</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用位图对不重复的非负整数进行排序"><span class="nav-number">4.1.</span> <span class="nav-text">使用位图对不重复的非负整数进行排序</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#二分搜索"><span class="nav-number">4.2.</span> <span class="nav-text">二分搜索</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数组的最大连续和"><span class="nav-number">4.3.</span> <span class="nav-text">数组的最大连续和</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#扫描算法"><span class="nav-number">4.3.1.</span> <span class="nav-text">扫描算法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#稀疏矩阵取代二维数组"><span class="nav-number">4.3.2.</span> <span class="nav-text">稀疏矩阵取代二维数组</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
