@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.6.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.6.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.6.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.6.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.6.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="由上两篇Redis源码阅读笔记-命令的接收和执行过程(一) 和Redis源码阅读笔记-命令的接收和执行过程(二) 可以知道，大部分命令是从server.c文件中的int processCommand(client *c)函数，通过lookupCommand()获的结构体为redisCommand的命令的。其实这是通过命令名在server.commands中来查看的。 Redis的命令列表是保存在全">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis源码阅读笔记-各命令的执行(编写中)">
+<meta property="og:url" content="http://yoursite.com/2019/02/27/Redis源码阅读笔记-各命令的执行/index.html">
+<meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="由上两篇Redis源码阅读笔记-命令的接收和执行过程(一) 和Redis源码阅读笔记-命令的接收和执行过程(二) 可以知道，大部分命令是从server.c文件中的int processCommand(client *c)函数，通过lookupCommand()获的结构体为redisCommand的命令的。其实这是通过命令名在server.commands中来查看的。 Redis的命令列表是保存在全">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-02-27T14:52:27.761Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Redis源码阅读笔记-各命令的执行(编写中)">
+<meta name="twitter:description" content="由上两篇Redis源码阅读笔记-命令的接收和执行过程(一) 和Redis源码阅读笔记-命令的接收和执行过程(二) 可以知道，大部分命令是从server.c文件中的int processCommand(client *c)函数，通过lookupCommand()获的结构体为redisCommand的命令的。其实这是通过命令名在server.commands中来查看的。 Redis的命令列表是保存在全">
+
+
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/02/27/Redis源码阅读笔记-各命令的执行/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Redis源码阅读笔记-各命令的执行(编写中) | Ming Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ming Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Ming的博客</p>
+      
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/02/27/Redis源码阅读笔记-各命令的执行/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Redis源码阅读笔记-各命令的执行(编写中)
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-02-27 22:52:00 / 修改时间：22:52:27" itemprop="dateCreated datePublished" datetime="2019-02-27T22:52:00+08:00">2019-02-27</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Redis/" itemprop="url" rel="index"><span itemprop="name">Redis</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Redis/阅读笔记/" itemprop="url" rel="index"><span itemprop="name">阅读笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>由上两篇<a href="http://blog.mingforpc.me/2018/12/20/Redis%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0-%E5%91%BD%E4%BB%A4%E7%9A%84%E6%8E%A5%E6%94%B6%E5%92%8C%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B-%E4%B8%80/" target="_blank" rel="noopener">Redis源码阅读笔记-命令的接收和执行过程(一)
+</a>和<a href="http://blog.mingforpc.me/2019/01/08/Redis%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0-%E5%91%BD%E4%BB%A4%E7%9A%84%E6%8E%A5%E6%94%B6%E5%92%8C%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B-%E4%BA%8C/" target="_blank" rel="noopener">Redis源码阅读笔记-命令的接收和执行过程(二)
+</a>可以知道，大部分命令是从<code>server.c</code>文件中的<code>int processCommand(client *c)</code>函数，通过<code>lookupCommand()</code>获的结构体为<code>redisCommand</code>的命令的。其实这是通过命令名在<code>server.commands</code>中来查看的。</p>
+<p>Redis的命令列表是保存在全局变量<code>server.commands</code>中的，而其初始化是在</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// server.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">initServerConfig</span><span class="params">(<span class="keyword">void</span>)</span> </span>&#123;</span><br><span class="line">	......</span><br><span class="line">	server.commands = dictCreate(&amp;commandTableDictType,<span class="literal">NULL</span>);</span><br><span class="line">	server.orig_commands = dictCreate(&amp;commandTableDictType,<span class="literal">NULL</span>);</span><br><span class="line">	populateCommandTable();</span><br><span class="line">	server.delCommand = lookupCommandByCString(<span class="string">"del"</span>);</span><br><span class="line">	server.multiCommand = lookupCommandByCString(<span class="string">"multi"</span>);</span><br><span class="line">	server.lpushCommand = lookupCommandByCString(<span class="string">"lpush"</span>);</span><br><span class="line">	server.lpopCommand = lookupCommandByCString(<span class="string">"lpop"</span>);</span><br><span class="line">	server.rpopCommand = lookupCommandByCString(<span class="string">"rpop"</span>);</span><br><span class="line">	server.sremCommand = lookupCommandByCString(<span class="string">"srem"</span>);</span><br><span class="line">	server.execCommand = lookupCommandByCString(<span class="string">"exec"</span>);</span><br><span class="line">	server.expireCommand = lookupCommandByCString(<span class="string">"expire"</span>);</span><br><span class="line">	server.pexpireCommand = lookupCommandByCString(<span class="string">"pexpire"</span>);</span><br><span class="line">	......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>而其中，<code>populateCommandTable()</code>是给<code>server.commands</code>和<code>server.orig_commands</code>初始化值:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// server.c</span></span><br><span class="line"><span class="comment">/* Populates the Redis Command Table starting from the hard coded list</span></span><br><span class="line"><span class="comment"> * we have on top of redis.c file. */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">populateCommandTable</span><span class="params">(<span class="keyword">void</span>)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> j;</span><br><span class="line">    <span class="keyword">int</span> numcommands = <span class="keyword">sizeof</span>(redisCommandTable)/<span class="keyword">sizeof</span>(struct redisCommand);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (j = <span class="number">0</span>; j &lt; numcommands; j++) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">redisCommand</span> *<span class="title">c</span> = <span class="title">redisCommandTable</span>+<span class="title">j</span>;</span></span><br><span class="line">        <span class="keyword">char</span> *f = c-&gt;sflags;</span><br><span class="line">        <span class="keyword">int</span> retval1, retval2;</span><br><span class="line">		 </span><br><span class="line">		 <span class="comment">// 区分命令的类型</span></span><br><span class="line">        <span class="keyword">while</span>(*f != <span class="string">'\0'</span>) &#123;</span><br><span class="line">            <span class="keyword">switch</span>(*f) &#123;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'w'</span>: c-&gt;flags |= CMD_WRITE; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'r'</span>: c-&gt;flags |= CMD_READONLY; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'m'</span>: c-&gt;flags |= CMD_DENYOOM; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'a'</span>: c-&gt;flags |= CMD_ADMIN; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'p'</span>: c-&gt;flags |= CMD_PUBSUB; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'s'</span>: c-&gt;flags |= CMD_NOSCRIPT; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'R'</span>: c-&gt;flags |= CMD_RANDOM; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'S'</span>: c-&gt;flags |= CMD_SORT_FOR_SCRIPT; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'l'</span>: c-&gt;flags |= CMD_LOADING; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'t'</span>: c-&gt;flags |= CMD_STALE; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'M'</span>: c-&gt;flags |= CMD_SKIP_MONITOR; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'k'</span>: c-&gt;flags |= CMD_ASKING; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">'F'</span>: c-&gt;flags |= CMD_FAST; <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">default</span>: serverPanic(<span class="string">"Unsupported command flag"</span>); <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            f++;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        retval1 = dictAdd(server.commands, sdsnew(c-&gt;name), c);</span><br><span class="line">        <span class="comment">/* Populate an additional dictionary that will be unaffected</span></span><br><span class="line"><span class="comment">         * by rename-command statements in redis.conf. */</span></span><br><span class="line">        retval2 = dictAdd(server.orig_commands, sdsnew(c-&gt;name), c);</span><br><span class="line">        serverAssert(retval1 == DICT_OK &amp;&amp; retval2 == DICT_OK);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>而 <code>redisCommandTable</code>则是在<code>server.c</code>文件中的一个全局变量，保存着命令字符串和操作函数。</p>
+<h2 id="redisCommand结构体"><a href="#redisCommand结构体" class="headerlink" title="redisCommand结构体"></a><code>redisCommand</code>结构体</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//server.h </span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">redisCommand</span> &#123;</span></span><br><span class="line">    <span class="keyword">char</span> *name;</span><br><span class="line">    redisCommandProc *proc;</span><br><span class="line">    <span class="keyword">int</span> arity;</span><br><span class="line">    <span class="keyword">char</span> *sflags; <span class="comment">/* Flags as string representation, one char per flag. */</span></span><br><span class="line">    <span class="keyword">int</span> flags;    <span class="comment">/* The actual flags, obtained from the 'sflags' field. */</span></span><br><span class="line">    <span class="comment">/* Use a function to determine keys arguments in a command line.</span></span><br><span class="line"><span class="comment">     * Used for Redis Cluster redirect. */</span></span><br><span class="line">    redisGetKeysProc *getkeys_proc;</span><br><span class="line">    <span class="comment">/* What keys should be loaded in background when calling this command? */</span></span><br><span class="line">    <span class="keyword">int</span> firstkey; <span class="comment">/* The first argument that's a key (0 = no keys) */</span></span><br><span class="line">    <span class="keyword">int</span> lastkey;  <span class="comment">/* The last argument that's a key */</span></span><br><span class="line">    <span class="keyword">int</span> keystep;  <span class="comment">/* The step between first and last key */</span></span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> microseconds, calls;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>name</code>: 是命令的名字。</li>
+<li><code>proc</code>: 是命令的操作函数的指针，指向这个命令的具体操作。</li>
+<li><code>arity</code>: 命令所需参数的数量。</li>
+<li><code>sflags</code>: 命令标识的字符串形式。<ul>
+<li><code>w</code>: 写命令。</li>
+<li><code>r</code>: 读命令。</li>
+<li><code>m</code>: 当调用时可能会增加内存的使用。（当超过内存限制时不允许执行）</li>
+<li><code>a</code>: 管理员权限的命令，etc: <code>SAVE</code>和<code>SHUTDOWN</code>。</li>
+<li><code>p</code>: <code>Pub/Sub</code>相关的命令。</li>
+<li><code>f</code>: 无论<code>server.dirty</code>的值如何，都强制执行。</li>
+<li><code>s</code>: 不允许在Lua脚本中执行此函数。</li>
+<li><code>R</code>: 随机类型的命令，这表示命令是不幂等的。意思是，同一个命令，具有相同的参数和键空间，可能会有不同的结果。比如<code>SPOP</code>和<code>RANDOMKEY</code>。</li>
+<li><code>S</code>: 表示如果命令从脚本调用，会将输出的数组排序，使得结果具有幂等性。</li>
+<li><code>l</code>: 表示允许该命令在加载数据库时执行。</li>
+<li><code>t</code>: 表示允许命令在“从”服务器中有过时数据时执行。这个命令类型是很少的。</li>
+<li><code>M</code>: 表示命令不会自动在MONITOR上传播。</li>
+<li><code>k</code>: 表示会对该命令隐式得执行<code>ASKING</code>这会使得在集群模式下，slot会被标记为<code>importing</code>。</li>
+<li><code>F</code>: 快速执行的命令（一般是时间复杂度为<code>O(n)</code>和<code>O(log(n))</code>的命令）。只要内核调度给予时间则都不应该被延迟执行。PS：对于<code>SET</code>来说，由于可能会触发<code>DEL</code>命令，所以不是快速命令。</li>
+</ul>
+</li>
+<li><code>flags</code>: 命令表示的比特位形式。</li>
+<li><code>getkeys_proc</code>: 指向一个帮助在命令行中获取”键”参数的函数。（可选的，仅当下面3个参数不足以指定哪些是“键”）。</li>
+<li><code>firstkey</code>: 表明第一个参数是“键”。</li>
+<li><code>lastkey</code>: 表明最后一个参数是”键”。</li>
+<li><code>keystep</code>: “键”参数的间隔数，比如<code>MSET</code>中参数形式为<code>key, val, key, val</code>。</li>
+</ul>
+<h2 id="命令的执行"><a href="#命令的执行" class="headerlink" title="命令的执行"></a>命令的执行</h2><h3 id="MODULE模块化命令"><a href="#MODULE模块化命令" class="headerlink" title="MODULE模块化命令"></a><code>MODULE</code>模块化命令</h3><p>Reids 4.0 中加入的功能，可以通过外部模块对Redis进行功能扩展。</p>
+<ul>
+<li><code>sflags</code>：<code>as</code>，表示其为管理员权限的命令，而且不允许被Lua脚本调用。</li>
+</ul>
+<h4 id="命令形式"><a href="#命令形式" class="headerlink" title="命令形式"></a>命令形式</h4><ul>
+<li><code>MODULE LOAD /path/to/mymodule.so</code>表示加载模块。</li>
+<li><code>MODULE LIST</code>表示列出已经加载的模块。</li>
+<li><code>MODULE UNLOAD mymodule</code>表示卸载模块。</li>
+</ul>
+<h4 id="内部实现函数"><a href="#内部实现函数" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><p>打算迟点写一下module模块的实现，所以更详细的迟点再写。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// module.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Redis MODULE command.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * MODULE LOAD &lt;path&gt; [args...] */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">moduleCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">char</span> *subcmd = c-&gt;argv[<span class="number">1</span>]-&gt;ptr;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!strcasecmp(subcmd,<span class="string">"load"</span>) &amp;&amp; c-&gt;argc &gt;= <span class="number">3</span>) &#123;</span><br><span class="line">        <span class="comment">// 调用 `MODULE LOAD /path/to/mymodule.so`</span></span><br><span class="line">        robj **argv = <span class="literal">NULL</span>;</span><br><span class="line">        <span class="keyword">int</span> argc = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (c-&gt;argc &gt; <span class="number">3</span>) &#123;</span><br><span class="line">            argc = c-&gt;argc - <span class="number">3</span>;</span><br><span class="line">            argv = &amp;c-&gt;argv[<span class="number">3</span>];</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 真正加载模块的函数，该函数工作顺序:</span></span><br><span class="line">        <span class="comment">// 1. 通过`dlopen()`加载动态链接库</span></span><br><span class="line">        <span class="comment">// 2. 通过`dlsym()`获得 RedisModule_OnLoad 的加载函数 onload</span></span><br><span class="line">        <span class="comment">// 3. 调用 onload 加载</span></span><br><span class="line">        <span class="comment">// 4. 加载成功，以模块名字为Key，保存入全局字典变量modules中</span></span><br><span class="line">        <span class="keyword">if</span> (moduleLoad(c-&gt;argv[<span class="number">2</span>]-&gt;ptr,(<span class="keyword">void</span> **)argv,argc) == C_OK)</span><br><span class="line">            addReply(c,shared.ok);</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            addReplyError(c,</span><br><span class="line">                <span class="string">"Error loading the extension. Please check the server logs."</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(subcmd,<span class="string">"unload"</span>) &amp;&amp; c-&gt;argc == <span class="number">3</span>) &#123;</span><br><span class="line">        <span class="comment">// 调用 `MODULE UNLOAD mymodule`</span></span><br><span class="line">        <span class="comment">// 真正卸载模块的函数，该函数工作顺序:</span></span><br><span class="line">        <span class="comment">// 1. 在注销模块注册的命令</span></span><br><span class="line">        <span class="comment">// 2. 注销所有此模块的消息订阅</span></span><br><span class="line">        <span class="comment">// 3. 通过`dlclose()`卸载模块</span></span><br><span class="line">        <span class="comment">// 4. 在全局字典变量modules删除模块</span></span><br><span class="line">        <span class="keyword">if</span> (moduleUnload(c-&gt;argv[<span class="number">2</span>]-&gt;ptr) == C_OK)</span><br><span class="line">            addReply(c,shared.ok);</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">char</span> *errmsg;</span><br><span class="line">            <span class="keyword">switch</span>(errno) &#123;</span><br><span class="line">            <span class="keyword">case</span> ENOENT:</span><br><span class="line">                errmsg = <span class="string">"no such module with that name"</span>;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> EBUSY:</span><br><span class="line">                errmsg = <span class="string">"the module exports one or more module-side data types, can't unload"</span>;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">default</span>:</span><br><span class="line">                errmsg = <span class="string">"operation not possible."</span>;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            addReplyErrorFormat(c,<span class="string">"Error unloading module: %s"</span>,errmsg);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(subcmd,<span class="string">"list"</span>) &amp;&amp; c-&gt;argc == <span class="number">2</span>) &#123;</span><br><span class="line">        <span class="comment">// 调用`MODULE LIST`</span></span><br><span class="line">        dictIterator *di = dictGetIterator(modules);</span><br><span class="line">        dictEntry *de;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 遍历全局字典表量modules, 获得其中的模块名</span></span><br><span class="line">        addReplyMultiBulkLen(c,dictSize(modules));</span><br><span class="line">        <span class="keyword">while</span> ((de = dictNext(di)) != <span class="literal">NULL</span>) &#123;</span><br><span class="line">            sds name = dictGetKey(de);</span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">RedisModule</span> *<span class="title">module</span> = <span class="title">dictGetVal</span>(<span class="title">de</span>);</span></span><br><span class="line">            addReplyMultiBulkLen(c,<span class="number">4</span>);</span><br><span class="line">            addReplyBulkCString(c,<span class="string">"name"</span>);</span><br><span class="line">            addReplyBulkCBuffer(c,name,sdslen(name));</span><br><span class="line">            addReplyBulkCString(c,<span class="string">"ver"</span>);</span><br><span class="line">            addReplyLongLong(c,<span class="keyword">module</span>-&gt;ver);</span><br><span class="line">        &#125;</span><br><span class="line">        dictReleaseIterator(di);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        addReply(c,shared.syntaxerr);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="GET命令"><a href="#GET命令" class="headerlink" title="GET命令"></a><code>GET</code>命令</h3><p>返回与键 <code>key</code> 相关联的字符串值。</p>
+<p>如果键<code>key</code>不存在，那么返回特殊值<code>nil</code>；否则，返回键<code>key</code>的值。</p>
+<p>如果键<code>key</code>的值并非字符串类型，那么返回一个错误，因为<code>GET</code>命令只能用于字符串值。</p>
+<ul>
+<li><code>sflags</code>：<code>rF</code>，表示是读命令，且快速执行，不应该被延迟。</li>
+</ul>
+<h4 id="命令形式-1"><a href="#命令形式-1" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GET &#123;key name&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-1"><a href="#内部实现函数-1" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">getCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    getGenericCommand(c);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">getGenericCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    robj *o;</span><br><span class="line">	</span><br><span class="line">	 <span class="comment">// c-&gt;argv[1]为命令中的 key，`shared.nullbulk`是返回的默认值 `nil`</span></span><br><span class="line">    <span class="keyword">if</span> ((o = lookupKeyReadOrReply(c,c-&gt;argv[<span class="number">1</span>],shared.nullbulk)) == <span class="literal">NULL</span>)</span><br><span class="line">        <span class="keyword">return</span> C_OK;</span><br><span class="line">	 </span><br><span class="line">	 <span class="comment">// 判断返回的值得格式，只允许字符串格式</span></span><br><span class="line">    <span class="keyword">if</span> (o-&gt;type != OBJ_STRING) &#123;</span><br><span class="line">        addReply(c,shared.wrongtypeerr);</span><br><span class="line">        <span class="keyword">return</span> C_ERR;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        addReplyBulk(c,o);</span><br><span class="line">        <span class="keyword">return</span> C_OK;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// db.c</span></span><br><span class="line"><span class="function">robj *<span class="title">lookupKeyReadOrReply</span><span class="params">(client *c, robj *key, robj *reply)</span> </span>&#123;</span><br><span class="line">    robj *o = lookupKeyRead(c-&gt;db, key);</span><br><span class="line">    <span class="keyword">if</span> (!o) addReply(c,reply);</span><br><span class="line">    <span class="keyword">return</span> o;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>调用流程:</p>
+<ol>
+<li><code>getCommand()</code>在函数内调用<code>getGenericCommand()</code></li>
+<li><code>getGenericCommand()</code>，在函数内调用<code>lookupKeyReadOrReply()</code>，并设置<code>null</code>为默认值。</li>
+<li><code>lookupKeyReadOrReply()</code>在<code>client-&gt;db</code>中查找key，如果没有找到就返回默认值。</li>
+</ol>
+<h3 id="SET命令"><a href="#SET命令" class="headerlink" title="SET命令"></a><code>SET</code>命令</h3><p>将字符串值 <code>value</code> 关联到 <code>key</code> 。</p>
+<p>如果 <code>key</code> 已经持有其他值， <code>SET</code> 就覆写旧值， 无视类型。</p>
+<p>当 <code>SET</code> 命令对一个带有生存时间（TTL）的键进行设置之后， 该键原有的 <code>TTL</code> 将被清除。</p>
+<ul>
+<li><code>sflags</code>：<code>wm</code>，写命令，并可能导致增加内存的使用。</li>
+</ul>
+<h4 id="命令形式-2"><a href="#命令形式-2" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SET key value [NX] [XX] [EX &lt;seconds&gt;] [PX &lt;milliseconds&gt;]</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>EX seconds</code> ： 将键的过期时间设置为 <code>seconds</code> 秒。 执行 <code>SET key value EX seconds</code> 的效果等同于执行 <code>SETEX key seconds value</code> 。</li>
+<li><code>PX milliseconds</code> ： 将键的过期时间设置为 <code>milliseconds</code> 毫秒。 执行 <code>SET key value PX milliseconds</code> 的效果等同于执行 <code>PSETEX key milliseconds value</code> 。</li>
+<li><code>NX</code> ： 只在键不存在时， 才对键进行设置操作。 执行 <code>SET key value NX</code> 的效果等同于执行 <code>SETNX key value</code> 。</li>
+<li><code>XX</code> ： 只在键已经存在时， 才对键进行设置操作。</li>
+</ul>
+<h4 id="内部实现函数-2"><a href="#内部实现函数-2" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* SET key value [NX] [XX] [EX &lt;seconds&gt;] [PX &lt;milliseconds&gt;] */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">setCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> j;</span><br><span class="line">    robj *expire = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">int</span> unit = UNIT_SECONDS;</span><br><span class="line">    <span class="keyword">int</span> flags = OBJ_SET_NO_FLAGS;</span><br><span class="line">	</span><br><span class="line">	 <span class="comment">// 判断是否有 `EX` `PX` `NX` `XX`</span></span><br><span class="line">	 <span class="comment">// 并将其标志入flags中</span></span><br><span class="line">	 <span class="comment">// expire是保存过期时间</span></span><br><span class="line">	 <span class="comment">// unit 是保存过期时间的单位</span></span><br><span class="line">    <span class="keyword">for</span> (j = <span class="number">3</span>; j &lt; c-&gt;argc; j++) &#123;</span><br><span class="line">        <span class="keyword">char</span> *a = c-&gt;argv[j]-&gt;ptr;</span><br><span class="line">        robj *next = (j == c-&gt;argc<span class="number">-1</span>) ? <span class="literal">NULL</span> : c-&gt;argv[j+<span class="number">1</span>];</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> ((a[<span class="number">0</span>] == <span class="string">'n'</span> || a[<span class="number">0</span>] == <span class="string">'N'</span>) &amp;&amp;</span><br><span class="line">            (a[<span class="number">1</span>] == <span class="string">'x'</span> || a[<span class="number">1</span>] == <span class="string">'X'</span>) &amp;&amp; a[<span class="number">2</span>] == <span class="string">'\0'</span> &amp;&amp;</span><br><span class="line">            !(flags &amp; OBJ_SET_XX))</span><br><span class="line">        &#123;</span><br><span class="line">            flags |= OBJ_SET_NX;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> ((a[<span class="number">0</span>] == <span class="string">'x'</span> || a[<span class="number">0</span>] == <span class="string">'X'</span>) &amp;&amp;</span><br><span class="line">                   (a[<span class="number">1</span>] == <span class="string">'x'</span> || a[<span class="number">1</span>] == <span class="string">'X'</span>) &amp;&amp; a[<span class="number">2</span>] == <span class="string">'\0'</span> &amp;&amp;</span><br><span class="line">                   !(flags &amp; OBJ_SET_NX))</span><br><span class="line">        &#123;</span><br><span class="line">            flags |= OBJ_SET_XX;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> ((a[<span class="number">0</span>] == <span class="string">'e'</span> || a[<span class="number">0</span>] == <span class="string">'E'</span>) &amp;&amp;</span><br><span class="line">                   (a[<span class="number">1</span>] == <span class="string">'x'</span> || a[<span class="number">1</span>] == <span class="string">'X'</span>) &amp;&amp; a[<span class="number">2</span>] == <span class="string">'\0'</span> &amp;&amp;</span><br><span class="line">                   !(flags &amp; OBJ_SET_PX) &amp;&amp; next)</span><br><span class="line">        &#123;</span><br><span class="line">            flags |= OBJ_SET_EX;</span><br><span class="line">            unit = UNIT_SECONDS;</span><br><span class="line">            expire = next;</span><br><span class="line">            j++;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> ((a[<span class="number">0</span>] == <span class="string">'p'</span> || a[<span class="number">0</span>] == <span class="string">'P'</span>) &amp;&amp;</span><br><span class="line">                   (a[<span class="number">1</span>] == <span class="string">'x'</span> || a[<span class="number">1</span>] == <span class="string">'X'</span>) &amp;&amp; a[<span class="number">2</span>] == <span class="string">'\0'</span> &amp;&amp;</span><br><span class="line">                   !(flags &amp; OBJ_SET_EX) &amp;&amp; next)</span><br><span class="line">        &#123;</span><br><span class="line">            flags |= OBJ_SET_PX;</span><br><span class="line">            unit = UNIT_MILLISECONDS;</span><br><span class="line">            expire = next;</span><br><span class="line">            j++;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            addReply(c,shared.syntaxerr);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">	</span><br><span class="line">	 <span class="comment">// 将 value 编码</span></span><br><span class="line">    c-&gt;argv[<span class="number">2</span>] = tryObjectEncoding(c-&gt;argv[<span class="number">2</span>]);</span><br><span class="line">    setGenericCommand(c,flags,c-&gt;argv[<span class="number">1</span>],c-&gt;argv[<span class="number">2</span>],expire,unit,<span class="literal">NULL</span>,<span class="literal">NULL</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">setGenericCommand</span><span class="params">(client *c, <span class="keyword">int</span> flags, robj *key, robj *val, robj *expire, <span class="keyword">int</span> unit, robj *ok_reply, robj *abort_reply)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> milliseconds = <span class="number">0</span>; <span class="comment">/* initialized to avoid any harmness warning */</span></span><br><span class="line">	</span><br><span class="line">	 <span class="comment">// 判断是否需要设置过期时间</span></span><br><span class="line">    <span class="keyword">if</span> (expire) &#123;</span><br><span class="line">        <span class="comment">// 如果是需要设置过期时间，</span></span><br><span class="line">        <span class="comment">// 则从expire中获取，</span></span><br><span class="line">        <span class="comment">// 并将其转成 long long 类型保存入变量milliseconds中</span></span><br><span class="line">        <span class="keyword">if</span> (getLongLongFromObjectOrReply(c, expire, &amp;milliseconds, <span class="literal">NULL</span>) != C_OK)</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        <span class="keyword">if</span> (milliseconds &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">            addReplyErrorFormat(c,<span class="string">"invalid expire time in %s"</span>,c-&gt;cmd-&gt;name);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 如果传入的单位是秒，则需要将变量milliseconds中的值转成毫秒</span></span><br><span class="line">        <span class="keyword">if</span> (unit == UNIT_SECONDS) milliseconds *= <span class="number">1000</span>;</span><br><span class="line">    &#125;</span><br><span class="line">	</span><br><span class="line">	 <span class="comment">// 满足条件</span></span><br><span class="line">	 <span class="comment">// 1. 带NX参数，且DB中的key已经存在</span></span><br><span class="line">	 <span class="comment">// 或</span></span><br><span class="line">	 <span class="comment">// 2. 带XX参数，且DB中的key不存在</span></span><br><span class="line">	 <span class="comment">// 则返回空</span></span><br><span class="line">    <span class="keyword">if</span> ((flags &amp; OBJ_SET_NX &amp;&amp; lookupKeyWrite(c-&gt;db,key) != <span class="literal">NULL</span>) ||</span><br><span class="line">        (flags &amp; OBJ_SET_XX &amp;&amp; lookupKeyWrite(c-&gt;db,key) == <span class="literal">NULL</span>))</span><br><span class="line">    &#123;</span><br><span class="line">        addReply(c, abort_reply ? abort_reply : shared.nullbulk);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 将键值对添加进c-&gt;db中</span></span><br><span class="line">    setKey(c-&gt;db,key,val);</span><br><span class="line">    server.dirty++;</span><br><span class="line">    <span class="comment">// 如果有过期时间，则会将过期时间和键值，保存到`c-&gt;db-&gt;expires`中</span></span><br><span class="line">    <span class="keyword">if</span> (expire) setExpire(c,c-&gt;db,key,mstime()+milliseconds);</span><br><span class="line">    <span class="comment">// 触发键空间的事件</span></span><br><span class="line">    notifyKeyspaceEvent(NOTIFY_STRING,<span class="string">"set"</span>,key,c-&gt;db-&gt;id);</span><br><span class="line">    <span class="keyword">if</span> (expire) notifyKeyspaceEvent(NOTIFY_GENERIC,</span><br><span class="line">        <span class="string">"expire"</span>,key,c-&gt;db-&gt;id);</span><br><span class="line">    <span class="comment">// 返回响应</span></span><br><span class="line">    addReply(c, ok_reply ? ok_reply : shared.ok);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="SETNX命令"><a href="#SETNX命令" class="headerlink" title="SETNX命令"></a><code>SETNX</code>命令</h3><p>只在键 <code>key</code> 不存在的情况下， 将键 <code>key</code> 的值设置为 <code>value</code> 。</p>
+<p>若键 <code>key</code> 已经存在， 则 <code>SETNX</code> 命令不做任何动作。</p>
+<p><code>SETNX</code> 是『SET if Not eXists』(如果不存在，则 SET)的简写。</p>
+<ul>
+<li><code>sflags</code>：<code>wmF</code>，写命令，并可能导致增加内存的使用。快速执行，不应该被延迟。</li>
+</ul>
+<p>PS： 可以用来实现分布式锁。</p>
+<h4 id="命令形式-3"><a href="#命令形式-3" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SETNX key value</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-3"><a href="#内部实现函数-3" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">setnxCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    c-&gt;argv[<span class="number">2</span>] = tryObjectEncoding(c-&gt;argv[<span class="number">2</span>]);</span><br><span class="line">    setGenericCommand(c,OBJ_SET_NX,c-&gt;argv[<span class="number">1</span>],c-&gt;argv[<span class="number">2</span>],<span class="literal">NULL</span>,<span class="number">0</span>,shared.cone,shared.czero);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>实际上是调用<code>setGenericCommand()</code>，详见<code>SET</code>的代码解析。</p>
+<h3 id="SETEX命令"><a href="#SETEX命令" class="headerlink" title="SETEX命令"></a><code>SETEX</code>命令</h3><p>将键 <code>key</code> 的值设置为 <code>value</code> ， 并将键 <code>key</code> 的生存时间设置为 <code>seconds</code> 秒钟。</p>
+<p>如果键 key 已经存在， 那么 SETEX 命令将覆盖已有的值。</p>
+<ul>
+<li><code>sflags</code>：<code>wm</code>，写命令，并可能导致增加内存的使用。</li>
+</ul>
+<h4 id="命令形式-4"><a href="#命令形式-4" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SETEX key value seconds</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-4"><a href="#内部实现函数-4" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">setexCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    c-&gt;argv[<span class="number">3</span>] = tryObjectEncoding(c-&gt;argv[<span class="number">3</span>]);</span><br><span class="line">    setGenericCommand(c,OBJ_SET_NO_FLAGS,c-&gt;argv[<span class="number">1</span>],c-&gt;argv[<span class="number">3</span>],c-&gt;argv[<span class="number">2</span>],UNIT_SECONDS,<span class="literal">NULL</span>,<span class="literal">NULL</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>实际上是调用<code>setGenericCommand()</code>，详见<code>SET</code>的代码解析。</p>
+<h3 id="PSETEX命令"><a href="#PSETEX命令" class="headerlink" title="PSETEX命令"></a><code>PSETEX</code>命令</h3><p>与 <code>SETEX</code> 类似，差别在时间单位是毫秒。</p>
+<ul>
+<li><code>sflags</code>：<code>wm</code>，写命令，并可能导致增加内存的使用。</li>
+</ul>
+<h4 id="命令形式-5"><a href="#命令形式-5" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SETEX key value milliseconds</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-5"><a href="#内部实现函数-5" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">psetexCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    c-&gt;argv[<span class="number">3</span>] = tryObjectEncoding(c-&gt;argv[<span class="number">3</span>]);</span><br><span class="line">    setGenericCommand(c,OBJ_SET_NO_FLAGS,c-&gt;argv[<span class="number">1</span>],c-&gt;argv[<span class="number">3</span>],c-&gt;argv[<span class="number">2</span>],UNIT_MILLISECONDS,<span class="literal">NULL</span>,<span class="literal">NULL</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>实际上是调用<code>setGenericCommand()</code>，详见<code>SET</code>的代码解析。</p>
+<h3 id="APPEND命令"><a href="#APPEND命令" class="headerlink" title="APPEND命令"></a><code>APPEND</code>命令</h3><p>如果键 <code>key</code> 已经存在并且它的值是一个字符串， <code>APPEND</code> 命令将把 <code>value</code> 追加到键 <code>key</code> 现有值的末尾。</p>
+<p>如果 <code>key</code> 不存在， <code>APPEND</code> 就简单地将键 <code>key</code> 的值设为 <code>value</code> ， 就像执行 <code>SET key value</code> 一样。</p>
+<ul>
+<li><code>sflags</code>：<code>wm</code>，写命令，并可能导致增加内存的使用。</li>
+</ul>
+<h4 id="命令形式-6"><a href="#命令形式-6" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">APPEND key value</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-6"><a href="#内部实现函数-6" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">appendCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// totlen 是返回的新值的长度</span></span><br><span class="line">    <span class="keyword">size_t</span> totlen;</span><br><span class="line">    robj *o, *append;</span><br><span class="line">	 </span><br><span class="line">	 </span><br><span class="line">	 <span class="comment">// 根据键获取值</span></span><br><span class="line">	 <span class="comment">// lookupKeyWrite() 会检查键是否已经过期</span></span><br><span class="line">    o = lookupKeyWrite(c-&gt;db,c-&gt;argv[<span class="number">1</span>]);</span><br><span class="line">    <span class="keyword">if</span> (o == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="comment">// 没有获取到对应键的值，则创建一个新键值对</span></span><br><span class="line">        <span class="comment">/* Create the key */</span></span><br><span class="line">        c-&gt;argv[<span class="number">2</span>] = tryObjectEncoding(c-&gt;argv[<span class="number">2</span>]);</span><br><span class="line">        dbAdd(c-&gt;db,c-&gt;argv[<span class="number">1</span>],c-&gt;argv[<span class="number">2</span>]);</span><br><span class="line">        incrRefCount(c-&gt;argv[<span class="number">2</span>]);</span><br><span class="line">        totlen = stringObjectLen(c-&gt;argv[<span class="number">2</span>]);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/* Key exists, check type */</span></span><br><span class="line">        <span class="comment">// 键存在，并检查值得类型</span></span><br><span class="line">        <span class="keyword">if</span> (checkType(c,o,OBJ_STRING))</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* "append" is an argument, so always an sds */</span></span><br><span class="line">        append = c-&gt;argv[<span class="number">2</span>];</span><br><span class="line">        <span class="comment">// 计算新字符串的长度值，并检查是否超过最大限制，默认为512MB</span></span><br><span class="line">        totlen = stringObjectLen(o)+sdslen(append-&gt;ptr);</span><br><span class="line">        <span class="keyword">if</span> (checkStringLength(c,totlen) != C_OK)</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Append the value */</span></span><br><span class="line">        <span class="comment">// 调用dbUnshareStringValue()</span></span><br><span class="line">        <span class="comment">// dbUnshareStringValue() 会检查字符串的引用，</span></span><br><span class="line">        <span class="comment">// 如果引用大于1，则函数会创建一个新的sds字符串返回,</span></span><br><span class="line">        <span class="comment">// 并将引用减1</span></span><br><span class="line">        o = dbUnshareStringValue(c-&gt;db,c-&gt;argv[<span class="number">1</span>],o);</span><br><span class="line">        <span class="comment">// 追加新值</span></span><br><span class="line">        o-&gt;ptr = sdscatlen(o-&gt;ptr,append-&gt;ptr,sdslen(append-&gt;ptr));</span><br><span class="line">        totlen = sdslen(o-&gt;ptr);</span><br><span class="line">    &#125;</span><br><span class="line">    signalModifiedKey(c-&gt;db,c-&gt;argv[<span class="number">1</span>]);</span><br><span class="line">    <span class="comment">// 触发事件</span></span><br><span class="line">    notifyKeyspaceEvent(NOTIFY_STRING,<span class="string">"append"</span>,c-&gt;argv[<span class="number">1</span>],c-&gt;db-&gt;id);</span><br><span class="line">    server.dirty++;</span><br><span class="line">    addReplyLongLong(c,totlen);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="STRLEN命令"><a href="#STRLEN命令" class="headerlink" title="STRLEN命令"></a><code>STRLEN</code>命令</h3><p>返回键 <code>key</code> 储存的字符串值的长度。</p>
+<p>当键 <code>key</code> 不存在时， 命令返回 <code>0</code> 。</p>
+<p>当 <code>key</code> 储存的不是字符串值时， 返回一个错误。</p>
+<ul>
+<li><code>sflags</code>：<code>rF</code>，只读，快速执行的命令，不应该被延迟。</li>
+</ul>
+<h4 id="命令形式-7"><a href="#命令形式-7" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">STRLEN key</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-7"><a href="#内部实现函数-7" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">strlenCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    robj *o;</span><br><span class="line">    <span class="comment">// 使用key（c-&gt;argv[1]）以只读模式获取值</span></span><br><span class="line">    <span class="keyword">if</span> ((o = lookupKeyReadOrReply(c,c-&gt;argv[<span class="number">1</span>],shared.czero)) == <span class="literal">NULL</span> ||</span><br><span class="line">        checkType(c,o,OBJ_STRING)) <span class="keyword">return</span>;</span><br><span class="line">    <span class="comment">// stringObjectLen()是sds获取字符串长度的方法</span></span><br><span class="line">    addReplyLongLong(c,stringObjectLen(o));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="DEL命令"><a href="#DEL命令" class="headerlink" title="DEL命令"></a><code>DEL</code>命令</h3><p>删除给定的一个或多个 <code>key</code> 。</p>
+<ul>
+<li><code>sflags</code>：<code>w</code>，写命令。</li>
+</ul>
+<h4 id="命令形式-8"><a href="#命令形式-8" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">DEL key [key ...]</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-8"><a href="#内部实现函数-8" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// db.c</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">delCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 0表示非延迟删除</span></span><br><span class="line">    delGenericCommand(c,<span class="number">0</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* This command implements DEL and LAZYDEL. */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">delGenericCommand</span><span class="params">(client *c, <span class="keyword">int</span> lazy)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> numdel = <span class="number">0</span>, j;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// DEL 命令可以接受多个key</span></span><br><span class="line">    <span class="keyword">for</span> (j = <span class="number">1</span>; j &lt; c-&gt;argc; j++) &#123;</span><br><span class="line">        <span class="comment">// 检查键是否过期</span></span><br><span class="line">        expireIfNeeded(c-&gt;db,c-&gt;argv[j]);</span><br><span class="line">        <span class="comment">// 通过lazy判断删除是否是延迟删除</span></span><br><span class="line">        <span class="comment">// 如果是延迟删除，则会调用异步删除</span></span><br><span class="line">        <span class="comment">// 如果不是，则会同步删除</span></span><br><span class="line">        <span class="keyword">int</span> deleted  = lazy ? dbAsyncDelete(c-&gt;db,c-&gt;argv[j]) :</span><br><span class="line">                              dbSyncDelete(c-&gt;db,c-&gt;argv[j]);</span><br><span class="line">        <span class="keyword">if</span> (deleted) &#123;</span><br><span class="line">            signalModifiedKey(c-&gt;db,c-&gt;argv[j]);</span><br><span class="line">            notifyKeyspaceEvent(NOTIFY_GENERIC,</span><br><span class="line">                <span class="string">"del"</span>,c-&gt;argv[j],c-&gt;db-&gt;id);</span><br><span class="line">            server.dirty++;</span><br><span class="line">            numdel++;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    addReplyLongLong(c,numdel);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li><figure class="highlight plain"><figcaption><span>将删除操作，封装进一个BIO任务（多线程操作）中。在EventLoop的阻塞期间执行（可以参考[事件和事件循环](http://blog.mingforpc.me/2018/12/18/Redis%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0-%E4%BA%8B%E4%BB%B6%E5%92%8C%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF/)）</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">* ```dbSyncDelete()```: 同步，直接`db`中删除键值对。</span><br><span class="line"></span><br><span class="line">### `UNLINK`命令</span><br><span class="line"></span><br><span class="line">延迟删除给定的一个或多个 `key` 。4.0 中加入，解决大KEY删除的问题。</span><br><span class="line"></span><br><span class="line">* `sflags`：`wF`，写命令，快速执行，不应该被延迟。</span><br><span class="line"></span><br><span class="line">#### 命令形式</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>DEL key [key …]<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">#### 内部实现函数</span><br><span class="line"></span><br><span class="line">```c</span><br><span class="line">// db.c</span><br><span class="line">void unlinkCommand(client *c) &#123;</span><br><span class="line">    // 1 表示延迟删除</span><br><span class="line">    delGenericCommand(c,1);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>详见<code>DEL</code>中的详解。</p>
+<h3 id="EXISTS命令"><a href="#EXISTS命令" class="headerlink" title="EXISTS命令"></a><code>EXISTS</code>命令</h3><p>检查给定 <code>key</code> 是否存在。</p>
+<ul>
+<li><code>sflags</code>：<code>rF</code>，只读，快速执行命令，不应该被延迟。</li>
+</ul>
+<h4 id="命令形式-9"><a href="#命令形式-9" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">EXISTS key [key2... keyN]</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-9"><a href="#内部实现函数-9" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// db.c</span></span><br><span class="line"><span class="comment">/* EXISTS key1 key2 ... key_N.</span></span><br><span class="line"><span class="comment"> * Return value is the number of keys existing. */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">existsCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> count = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">int</span> j;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (j = <span class="number">1</span>; j &lt; c-&gt;argc; j++) &#123;</span><br><span class="line">        <span class="comment">// 在db（hash map）中检查key是否存在，</span></span><br><span class="line">        <span class="comment">// 并且会检查key是否过期的</span></span><br><span class="line">        <span class="keyword">if</span> (lookupKeyRead(c-&gt;db,c-&gt;argv[j])) count++;</span><br><span class="line">    &#125;</span><br><span class="line">    addReplyLongLong(c,count);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="SETBIT命令"><a href="#SETBIT命令" class="headerlink" title="SETBIT命令"></a><code>SETBIT</code>命令</h3><p>对 <code>key</code> 所储存的字符串值，设置或清除指定偏移量上的位(bit)。</p>
+<p>位的设置或清除取决于 <code>value</code> 参数，可以是 <code>0</code> 也可以是 <code>1</code> 。</p>
+<p>当 <code>key</code> 不存在时，自动生成一个新的字符串值。</p>
+<p>字符串会进行伸展(grown)以确保它可以将 <code>value</code> 保存在指定的偏移量上。当字符串值进行伸展时，空白位置以 <code>0</code> 填充。</p>
+<p><code>offset</code> 参数必须大于或等于 <code>0</code> ，小于 <code>2^32</code> (bit 映射被限制在 <code>512 MB</code> 之内)。</p>
+<ul>
+<li><code>sflags</code>：<code>wm</code>，写命令，并且可能增加内存的使用。</li>
+</ul>
+<h4 id="命令形式-10"><a href="#命令形式-10" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SETBIT key offset bitvalue</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-10"><a href="#内部实现函数-10" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bitops.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* SETBIT key offset bitvalue */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">setbitCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    robj *o;</span><br><span class="line">    <span class="keyword">char</span> *err = <span class="string">"bit is not an integer or out of range"</span>;</span><br><span class="line">    <span class="keyword">size_t</span> bitoffset;</span><br><span class="line">    <span class="keyword">ssize_t</span> byte, bit;</span><br><span class="line">    <span class="keyword">int</span> byteval, bitval;</span><br><span class="line">    <span class="keyword">long</span> on;</span><br><span class="line">	 </span><br><span class="line">	 <span class="comment">// 获取offset，并赋值到变量bitoffset中</span></span><br><span class="line">    <span class="keyword">if</span> (getBitOffsetFromArgument(c,c-&gt;argv[<span class="number">2</span>],&amp;bitoffset,<span class="number">0</span>,<span class="number">0</span>) != C_OK)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">	 </span><br><span class="line">	 <span class="comment">// 获取bitvalue，并赋值到变量on中</span></span><br><span class="line">    <span class="keyword">if</span> (getLongFromObjectOrReply(c,c-&gt;argv[<span class="number">3</span>],&amp;on,err) != C_OK)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">	 </span><br><span class="line">	 </span><br><span class="line">    <span class="comment">/* Bits can only be set or cleared... */</span></span><br><span class="line">    <span class="comment">// ~1 = 0xF...FFE</span></span><br><span class="line">    <span class="comment">// 所以, 如果 on &amp; ~1 &gt; 0</span></span><br><span class="line">    <span class="comment">// 表示 on 不等于（1或者0）</span></span><br><span class="line">    <span class="keyword">if</span> (on &amp; ~<span class="number">1</span>) &#123;</span><br><span class="line">        addReplyError(c,err);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">	 <span class="comment">// 专门给位运算实现的函数</span></span><br><span class="line">	 <span class="comment">// 当 key 保存的值 不是 字符串类型，则会返回NULL</span></span><br><span class="line">	 <span class="comment">// 如果 key 不存在，则会生产指定长度butoffset的的字符串</span></span><br><span class="line">	 <span class="comment">// 如果 key 已经存在，且字符串长度不够，则会扩展至指定长度butoffset</span></span><br><span class="line">    <span class="keyword">if</span> ((o = lookupStringForBitCommand(c,bitoffset)) == <span class="literal">NULL</span>) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Get current values */</span></span><br><span class="line">    <span class="comment">// bitoffset &gt;&gt; 3 表示左移3位，既整除8，按照byte大小运算</span></span><br><span class="line">    byte = bitoffset &gt;&gt; <span class="number">3</span>;</span><br><span class="line">    byteval = ((<span class="keyword">uint8_t</span>*)o-&gt;ptr)[byte];</span><br><span class="line">    bit = <span class="number">7</span> - (bitoffset &amp; <span class="number">0x7</span>);</span><br><span class="line">    <span class="comment">// bitval 是原本的值</span></span><br><span class="line">    bitval = byteval &amp; (<span class="number">1</span> &lt;&lt; bit);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Update byte with new bit value and return original value */</span></span><br><span class="line">    byteval &amp;= ~(<span class="number">1</span> &lt;&lt; bit);</span><br><span class="line">    byteval |= ((on &amp; <span class="number">0x1</span>) &lt;&lt; bit);</span><br><span class="line">    <span class="comment">// 赋新值</span></span><br><span class="line">    ((<span class="keyword">uint8_t</span>*)o-&gt;ptr)[byte] = byteval;</span><br><span class="line">    <span class="comment">// 消息通知</span></span><br><span class="line">    signalModifiedKey(c-&gt;db,c-&gt;argv[<span class="number">1</span>]);</span><br><span class="line">    notifyKeyspaceEvent(NOTIFY_STRING,<span class="string">"setbit"</span>,c-&gt;argv[<span class="number">1</span>],c-&gt;db-&gt;id);</span><br><span class="line">    server.dirty++;</span><br><span class="line">    addReply(c, bitval ? shared.cone : shared.czero);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="GETBIT命令"><a href="#GETBIT命令" class="headerlink" title="GETBIT命令"></a><code>GETBIT</code>命令</h3><p>对 <code>key</code> 所储存的字符串值，获取指定偏移量上的位(bit)。</p>
+<p>当 <code>offset</code> 比字符串值的长度大，或者 <code>key</code> 不存在时，返回 0 。</p>
+<ul>
+<li><code>sflags</code>：<code>rF</code>，只读，快速执行命令，不应该被延迟。</li>
+</ul>
+<h4 id="命令形式-11"><a href="#命令形式-11" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GETBIT key offset</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-11"><a href="#内部实现函数-11" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bitops.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* GETBIT key offset */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">getbitCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    robj *o;</span><br><span class="line">    <span class="keyword">char</span> llbuf[<span class="number">32</span>];</span><br><span class="line">    <span class="keyword">size_t</span> bitoffset;</span><br><span class="line">    <span class="keyword">size_t</span> byte, bit;</span><br><span class="line">    <span class="keyword">size_t</span> bitval = <span class="number">0</span>;</span><br><span class="line">	</span><br><span class="line">	 <span class="comment">// 获取offset，并赋值到变量bitoffset中</span></span><br><span class="line">    <span class="keyword">if</span> (getBitOffsetFromArgument(c,c-&gt;argv[<span class="number">2</span>],&amp;bitoffset,<span class="number">0</span>,<span class="number">0</span>) != C_OK)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// 获取值并检查是否是sds字符串格式</span></span><br><span class="line">    <span class="keyword">if</span> ((o = lookupKeyReadOrReply(c,c-&gt;argv[<span class="number">1</span>],shared.czero)) == <span class="literal">NULL</span> ||</span><br><span class="line">        checkType(c,o,OBJ_STRING)) <span class="keyword">return</span>;</span><br><span class="line">	</span><br><span class="line">	 <span class="comment">// 按byte计算偏移量</span></span><br><span class="line">    byte = bitoffset &gt;&gt; <span class="number">3</span>;</span><br><span class="line">    bit = <span class="number">7</span> - (bitoffset &amp; <span class="number">0x7</span>);</span><br><span class="line">    <span class="comment">// 判断值o的sds保存格式，因为sds会有字符串格式和整数格式</span></span><br><span class="line">    <span class="keyword">if</span> (sdsEncodedObject(o)) &#123;</span><br><span class="line">    <span class="comment">// 字符串格式</span></span><br><span class="line">        <span class="keyword">if</span> (byte &lt; sdslen(o-&gt;ptr))</span><br><span class="line">            </span><br><span class="line">            bitval = ((<span class="keyword">uint8_t</span>*)o-&gt;ptr)[byte] &amp; (<span class="number">1</span> &lt;&lt; bit);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="comment">// 整数格式</span></span><br><span class="line">        <span class="comment">// 通过ll2string()将long long格式转为字节大小的数值表示</span></span><br><span class="line">        <span class="keyword">if</span> (byte &lt; (<span class="keyword">size_t</span>)ll2string(llbuf,<span class="keyword">sizeof</span>(llbuf),(<span class="keyword">long</span>)o-&gt;ptr))</span><br><span class="line">            bitval = llbuf[byte] &amp; (<span class="number">1</span> &lt;&lt; bit);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    addReply(c, bitval ? shared.cone : shared.czero);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>关于Redis中字符串的数据结构和编码可以看<a href="http://blog.mingforpc.me/2018/09/22/Redis%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E7%AC%94%E8%AE%B0-%E5%AF%B9%E8%B1%A1%E5%8F%8A%E5%85%B6%E7%B1%BB%E5%9E%8B%E5%92%8C%E7%BC%96%E7%A0%81/" target="_blank" rel="noopener">对象及其类型和编码</a>。</p>
+<h3 id="BITFIELD命令"><a href="#BITFIELD命令" class="headerlink" title="BITFIELD命令"></a><code>BITFIELD</code>命令</h3><p><code>BITFIELD</code> 命令可以将一个 Redis 字符串看作是一个由二进制位组成的数组， 并对这个数组中储存的长度不同的整数进行访问 （被储存的整数无需进行对齐）。 换句话说， 通过这个命令， 用户可以执行诸如 “对偏移量 1234 上的 5 位长有符号整数进行设置”、 “获取偏移量 4567 上的 31 位长无符号整数”等操作。 此外， <code>BITFIELD</code> 命令还可以对指定的整数执行加法操作和减法操作， 并且这些操作可以通过设置妥善地处理计算时出现的溢出情况。</p>
+<p><code>BITFIELD</code> 命令可以在一次调用中同时对多个位范围进行操作： 它接受一系列待执行的操作作为参数， 并返回一个数组作为回复， 数组中的每个元素就是对应操作的执行结果。</p>
+<ul>
+<li><code>sflags</code>：<code>wm</code>，写命令，并且可能增加内存的使用。</li>
+</ul>
+<h4 id="命令形式-12"><a href="#命令形式-12" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">BITFIELD key subcommmand-1 arg ... subcommand-2 arg ... subcommand-N ...</span><br></pre></td></tr></table></figure>
+<p>子命令支持:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">GET &lt;type&gt; &lt;offset&gt;</span><br><span class="line">SET &lt;type&gt; &lt;offset&gt; &lt;value&gt;</span><br><span class="line">INCRBY &lt;type&gt; &lt;offset&gt; &lt;increment&gt;</span><br><span class="line">OVERFLOW [WRAP|SAT|FAIL]</span><br></pre></td></tr></table></figure>
+<p><code>type</code>为指定的二进制范围，<code>i</code>表示有符号整数，<code>u</code>表示无符号整数。例如<code>u8</code>表示8位长的无符号整数，<code>i16</code>表示16位长的有符号整数。</p>
+<ul>
+<li><code>GET &lt;type&gt; &lt;offset&gt;</code>: 返回指定的二进制位范围。</li>
+<li><code>SET &lt;type&gt; &lt;offset&gt; &lt;value&gt;</code>: 对指定的二进制位范围进行设置，并返回旧值。</li>
+<li><code>INCRBY &lt;type&gt; &lt;offset&gt; &lt;increment&gt;</code>: 对指定的二进制位范围进行加法操作，并返回旧值。</li>
+<li><code>OVERFLOW [WRAP|SAT|FAIL]</code>: 溢出控制:<ul>
+<li><code>WRAP</code>: 使用回绕（wrap around）方法处理有符号整数和无符号整数的溢出情况。 对于无符号整数来说， 回绕就像使用数值本身与能够被储存的最大无符号整数执行取模计算， 这也是 C 语言的标准行为。 对于有符号整数来说， 上溢将导致数字重新从最小的负数开始计算， 而下溢将导致数字重新从最大的正数开始计算。 比如说， 如果我们对一个值为 <code>127</code> 的 <code>i8</code> 整数执行加<code>1</code>操作， 那么将得到结果 <code>-128</code> 。</li>
+<li><code>SAT</code>: 使用饱和计算（saturation arithmetic）方法处理溢出， 也即是说， 下溢计算的结果为最小的整数值， 而上溢计算的结果为最大的整数值。 举个例子， 如果我们对一个值为 <code>120</code> 的 <code>i8</code> 整数执行加 <code>10</code> 计算， 那么命令的结果将为 <code>i8</code> 类型所能储存的最大整数值 <code>127</code> 。 与此相反， 如果一个针对 <code>i8</code> 值的计算造成了下溢， 那么这个 <code>i8</code> 值将被设置为 <code>-127</code> 。</li>
+<li><code>FAIL</code> ： 在这一模式下， 命令将拒绝执行那些会导致上溢或者下溢情况出现的计算， 并向用户返回空值表示计算未被执行。</li>
+</ul>
+</li>
+</ul>
+<h4 id="内部实现函数-12"><a href="#内部实现函数-12" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bittops.c</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* BITFIELD key subcommmand-1 arg ... subcommand-2 arg ... subcommand-N ...</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Supported subcommands:</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * GET &lt;type&gt; &lt;offset&gt;</span></span><br><span class="line"><span class="comment"> * SET &lt;type&gt; &lt;offset&gt; &lt;value&gt;</span></span><br><span class="line"><span class="comment"> * INCRBY &lt;type&gt; &lt;offset&gt; &lt;increment&gt;</span></span><br><span class="line"><span class="comment"> * OVERFLOW [WRAP|SAT|FAIL]</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 子命令的结构体</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">bitfieldOp</span> &#123;</span></span><br><span class="line">    <span class="keyword">uint64_t</span> offset;    <span class="comment">/* Bitfield offset. */</span></span><br><span class="line">    <span class="keyword">int64_t</span> i64;        <span class="comment">/* Increment amount (INCRBY) or SET value */</span></span><br><span class="line">    <span class="keyword">int</span> opcode;         <span class="comment">/* Operation id. */</span></span><br><span class="line">    <span class="keyword">int</span> owtype;         <span class="comment">/* Overflow type to use. */</span></span><br><span class="line">    <span class="keyword">int</span> bits;           <span class="comment">/* Integer bitfield bits width. */</span></span><br><span class="line">    <span class="keyword">int</span> sign;           <span class="comment">/* True if signed, otherwise unsigned op. */</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bitfieldCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    robj *o;</span><br><span class="line">    <span class="keyword">size_t</span> bitoffset;</span><br><span class="line">    <span class="keyword">int</span> j, numops = <span class="number">0</span>, changes = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// 保存操作的数组</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">bitfieldOp</span> *<span class="title">ops</span> = <span class="title">NULL</span>;</span> <span class="comment">/* Array of ops to execute at end. */</span></span><br><span class="line">    <span class="keyword">int</span> owtype = BFOVERFLOW_WRAP; <span class="comment">/* Overflow type. */</span></span><br><span class="line">    <span class="keyword">int</span> readonly = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">size_t</span> higest_write_offset = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从命令中解析操作，保存到`ops`中</span></span><br><span class="line">    <span class="keyword">for</span> (j = <span class="number">2</span>; j &lt; c-&gt;argc; j++) &#123;</span><br><span class="line">        <span class="comment">// `remargs` 是用来判断参数是否足够的</span></span><br><span class="line">        <span class="keyword">int</span> remargs = c-&gt;argc-j<span class="number">-1</span>; <span class="comment">/* Remaining args other than current. */</span></span><br><span class="line">        <span class="keyword">char</span> *subcmd = c-&gt;argv[j]-&gt;ptr; <span class="comment">/* Current command name. */</span></span><br><span class="line">        <span class="keyword">int</span> opcode; <span class="comment">/* Current operation code. */</span></span><br><span class="line">        <span class="keyword">long</span> <span class="keyword">long</span> i64 = <span class="number">0</span>;  <span class="comment">/* Signed SET value. */</span></span><br><span class="line">        <span class="keyword">int</span> sign = <span class="number">0</span>; <span class="comment">/* Signed or unsigned type? */</span></span><br><span class="line">        <span class="keyword">int</span> bits = <span class="number">0</span>; <span class="comment">/* Bitfield width in bits. */</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (!strcasecmp(subcmd,<span class="string">"get"</span>) &amp;&amp; remargs &gt;= <span class="number">2</span>)</span><br><span class="line">            <span class="comment">// GET的子命令</span></span><br><span class="line">            opcode = BITFIELDOP_GET;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(subcmd,<span class="string">"set"</span>) &amp;&amp; remargs &gt;= <span class="number">3</span>)</span><br><span class="line">            <span class="comment">// SET的子命令</span></span><br><span class="line">            opcode = BITFIELDOP_SET;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(subcmd,<span class="string">"incrby"</span>) &amp;&amp; remargs &gt;= <span class="number">3</span>)</span><br><span class="line">            <span class="comment">// INCRBY的子命令</span></span><br><span class="line">            opcode = BITFIELDOP_INCRBY;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(subcmd,<span class="string">"overflow"</span>) &amp;&amp; remargs &gt;= <span class="number">1</span>) &#123;</span><br><span class="line">            <span class="comment">// 设置溢出处理</span></span><br><span class="line">            <span class="keyword">char</span> *owtypename = c-&gt;argv[j+<span class="number">1</span>]-&gt;ptr;</span><br><span class="line">            j++;</span><br><span class="line">            <span class="keyword">if</span> (!strcasecmp(owtypename,<span class="string">"wrap"</span>))</span><br><span class="line">                owtype = BFOVERFLOW_WRAP;</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(owtypename,<span class="string">"sat"</span>))</span><br><span class="line">                owtype = BFOVERFLOW_SAT;</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(owtypename,<span class="string">"fail"</span>))</span><br><span class="line">                owtype = BFOVERFLOW_FAIL;</span><br><span class="line">            <span class="keyword">else</span> &#123;</span><br><span class="line">                addReplyError(c,<span class="string">"Invalid OVERFLOW type specified"</span>);</span><br><span class="line">                zfree(ops);</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            addReply(c,shared.syntaxerr);</span><br><span class="line">            zfree(ops);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Get the type and offset arguments, common to all the ops. */</span></span><br><span class="line">        <span class="comment">// getBitfieldTypeFromArgument() 获取命令行中的, `type`</span></span><br><span class="line">        <span class="comment">// type 是有取值范围的</span></span><br><span class="line">        <span class="comment">// 当是有符号整数时，支持 i1 &lt; x &lt; i64</span></span><br><span class="line">        <span class="comment">// 当是无符号整数时，支持 u1 &lt; x &lt; u63</span></span><br><span class="line">        <span class="keyword">if</span> (getBitfieldTypeFromArgument(c,c-&gt;argv[j+<span class="number">1</span>],&amp;sign,&amp;bits) != C_OK) &#123;</span><br><span class="line">            zfree(ops);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// getBitOffsetFromArgument() 获取命令行中的, `offset`</span></span><br><span class="line">        <span class="comment">// offset 存在大小限制，必须是  -1 &lt; offset </span></span><br><span class="line">        <span class="comment">// 而且，offset通过bit转换后，大小是要先知道 512*1024*1024 bytes(512MB)以内</span></span><br><span class="line">        <span class="keyword">if</span> (getBitOffsetFromArgument(c,c-&gt;argv[j+<span class="number">2</span>],&amp;bitoffset,<span class="number">1</span>,bits) != C_OK)&#123;</span><br><span class="line">            zfree(ops);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 除了 Get以外, SET 和 INCRBY 都有第3个参数</span></span><br><span class="line">        <span class="keyword">if</span> (opcode != BITFIELDOP_GET) &#123;</span><br><span class="line">            readonly = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">if</span> (higest_write_offset &lt; bitoffset + bits - <span class="number">1</span>)</span><br><span class="line">                higest_write_offset = bitoffset + bits - <span class="number">1</span>;</span><br><span class="line">            <span class="comment">/* INCRBY and SET require another argument. */</span></span><br><span class="line">            <span class="keyword">if</span> (getLongLongFromObjectOrReply(c,c-&gt;argv[j+<span class="number">3</span>],&amp;i64,<span class="literal">NULL</span>) != C_OK)&#123;</span><br><span class="line">                zfree(ops);</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Populate the array of operations we'll process. */</span></span><br><span class="line">        <span class="comment">// 构成bitfieldOp结构体，保存入ops中</span></span><br><span class="line">        ops = zrealloc(ops,<span class="keyword">sizeof</span>(*ops)*(numops+<span class="number">1</span>));</span><br><span class="line">        ops[numops].offset = bitoffset;</span><br><span class="line">        ops[numops].i64 = i64;</span><br><span class="line">        ops[numops].opcode = opcode;</span><br><span class="line">        ops[numops].owtype = owtype;</span><br><span class="line">        ops[numops].bits = bits;</span><br><span class="line">        ops[numops].sign = sign;</span><br><span class="line">        numops++;</span><br><span class="line"></span><br><span class="line">        j += <span class="number">3</span> - (opcode == BITFIELDOP_GET);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// readonly 标记为记录子命令中是否存在写的命令</span></span><br><span class="line">    <span class="keyword">if</span> (readonly) &#123;</span><br><span class="line">        <span class="comment">/* Lookup for read is ok if key doesn't exit, but errors</span></span><br><span class="line"><span class="comment">         * if it's not a string. */</span></span><br><span class="line">        o = lookupKeyRead(c-&gt;db,c-&gt;argv[<span class="number">1</span>]);</span><br><span class="line">        <span class="keyword">if</span> (o != <span class="literal">NULL</span> &amp;&amp; checkType(c,o,OBJ_STRING)) <span class="keyword">return</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/* Lookup by making room up to the farest bit reached by</span></span><br><span class="line"><span class="comment">         * this operation. */</span></span><br><span class="line">        <span class="keyword">if</span> ((o = lookupStringForBitCommand(c,</span><br><span class="line">            higest_write_offset)) == <span class="literal">NULL</span>) <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    addReplyMultiBulkLen(c,numops);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Actually process the operations. */</span></span><br><span class="line">    <span class="keyword">for</span> (j = <span class="number">0</span>; j &lt; numops; j++) &#123;</span><br><span class="line">        <span class="comment">// 执行各个命令 </span></span><br><span class="line"></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">bitfieldOp</span> *<span class="title">thisop</span> = <span class="title">ops</span>+<span class="title">j</span>;</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Execute the operation. */</span></span><br><span class="line">        <span class="keyword">if</span> (thisop-&gt;opcode == BITFIELDOP_SET ||</span><br><span class="line">            thisop-&gt;opcode == BITFIELDOP_INCRBY)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">/* SET and INCRBY: We handle both with the same code path</span></span><br><span class="line"><span class="comment">             * for simplicity. SET return value is the previous value so</span></span><br><span class="line"><span class="comment">             * we need fetch &amp; store as well. */</span></span><br><span class="line"></span><br><span class="line">            <span class="comment">/* We need two different but very similar code paths for signed</span></span><br><span class="line"><span class="comment">             * and unsigned operations, since the set of functions to get/set</span></span><br><span class="line"><span class="comment">             * the integers and the used variables types are different. */</span></span><br><span class="line">            <span class="keyword">if</span> (thisop-&gt;sign) &#123;</span><br><span class="line">                <span class="comment">// 有符号整数</span></span><br><span class="line">                <span class="keyword">int64_t</span> oldval, newval, wrapped, retval;</span><br><span class="line">                <span class="keyword">int</span> overflow;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 获取旧值</span></span><br><span class="line">                oldval = getSignedBitfield(o-&gt;ptr,thisop-&gt;offset,</span><br><span class="line">                        thisop-&gt;bits);</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (thisop-&gt;opcode == BITFIELDOP_INCRBY) &#123;</span><br><span class="line">                    <span class="comment">// INCRBY</span></span><br><span class="line">                    newval = oldval + thisop-&gt;i64;</span><br><span class="line">                    <span class="comment">// 检查Overflow</span></span><br><span class="line">                    overflow = checkSignedBitfieldOverflow(oldval,</span><br><span class="line">                            thisop-&gt;i64,thisop-&gt;bits,thisop-&gt;owtype,&amp;wrapped);</span><br><span class="line">                    <span class="keyword">if</span> (overflow) newval = wrapped;</span><br><span class="line">                    retval = newval;</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    <span class="comment">// SET</span></span><br><span class="line">                    newval = thisop-&gt;i64;</span><br><span class="line">                    <span class="comment">// 检查Overflow</span></span><br><span class="line">                    overflow = checkSignedBitfieldOverflow(newval,</span><br><span class="line">                            <span class="number">0</span>,thisop-&gt;bits,thisop-&gt;owtype,&amp;wrapped);</span><br><span class="line">                    <span class="keyword">if</span> (overflow) newval = wrapped;</span><br><span class="line">                    retval = oldval;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">/* On overflow of type is "FAIL", don't write and return</span></span><br><span class="line"><span class="comment">                 * NULL to signal the condition. */</span></span><br><span class="line">                <span class="keyword">if</span> (!(overflow &amp;&amp; thisop-&gt;owtype == BFOVERFLOW_FAIL)) &#123;</span><br><span class="line">                    addReplyLongLong(c,retval);</span><br><span class="line">                    setSignedBitfield(o-&gt;ptr,thisop-&gt;offset,</span><br><span class="line">                                      thisop-&gt;bits,newval);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    addReply(c,shared.nullbulk);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// 无符号整数</span></span><br><span class="line">                <span class="keyword">uint64_t</span> oldval, newval, wrapped, retval;</span><br><span class="line">                <span class="keyword">int</span> overflow;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 获取旧值</span></span><br><span class="line">                oldval = getUnsignedBitfield(o-&gt;ptr,thisop-&gt;offset,</span><br><span class="line">                        thisop-&gt;bits);</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (thisop-&gt;opcode == BITFIELDOP_INCRBY) &#123;</span><br><span class="line">                    <span class="comment">// INCRBY</span></span><br><span class="line">                    newval = oldval + thisop-&gt;i64;</span><br><span class="line">                    overflow = checkUnsignedBitfieldOverflow(oldval,</span><br><span class="line">                            thisop-&gt;i64,thisop-&gt;bits,thisop-&gt;owtype,&amp;wrapped);</span><br><span class="line">                    <span class="keyword">if</span> (overflow) newval = wrapped;</span><br><span class="line">                    retval = newval;</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                     <span class="comment">// SET</span></span><br><span class="line">                    newval = thisop-&gt;i64;</span><br><span class="line">                    overflow = checkUnsignedBitfieldOverflow(newval,</span><br><span class="line">                            <span class="number">0</span>,thisop-&gt;bits,thisop-&gt;owtype,&amp;wrapped);</span><br><span class="line">                    <span class="keyword">if</span> (overflow) newval = wrapped;</span><br><span class="line">                    retval = oldval;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">/* On overflow of type is "FAIL", don't write and return</span></span><br><span class="line"><span class="comment">                 * NULL to signal the condition. */</span></span><br><span class="line">                <span class="keyword">if</span> (!(overflow &amp;&amp; thisop-&gt;owtype == BFOVERFLOW_FAIL)) &#123;</span><br><span class="line">                    addReplyLongLong(c,retval);</span><br><span class="line">                    setUnsignedBitfield(o-&gt;ptr,thisop-&gt;offset,</span><br><span class="line">                                        thisop-&gt;bits,newval);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    addReply(c,shared.nullbulk);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            changes++;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">/* GET */</span></span><br><span class="line">            <span class="keyword">unsigned</span> <span class="keyword">char</span> buf[<span class="number">9</span>];</span><br><span class="line">            <span class="keyword">long</span> <span class="built_in">strlen</span> = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">unsigned</span> <span class="keyword">char</span> *src = <span class="literal">NULL</span>;</span><br><span class="line">            <span class="keyword">char</span> llbuf[LONG_STR_SIZE];</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (o != <span class="literal">NULL</span>)</span><br><span class="line">                src = getObjectReadOnlyString(o,&amp;<span class="built_in">strlen</span>,llbuf);</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* For GET we use a trick: before executing the operation</span></span><br><span class="line"><span class="comment">             * copy up to 9 bytes to a local buffer, so that we can easily</span></span><br><span class="line"><span class="comment">             * execute up to 64 bit operations that are at actual string</span></span><br><span class="line"><span class="comment">             * object boundaries. */</span></span><br><span class="line">            <span class="comment">// 因为之前看，取值范围是有限制的，所以使用最多9个字节处理</span></span><br><span class="line">            <span class="built_in">memset</span>(buf,<span class="number">0</span>,<span class="number">9</span>);</span><br><span class="line">            <span class="keyword">int</span> i;</span><br><span class="line">            <span class="keyword">size_t</span> byte = thisop-&gt;offset &gt;&gt; <span class="number">3</span>;</span><br><span class="line">            <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; <span class="number">9</span>; i++) &#123;</span><br><span class="line">                <span class="keyword">if</span> (src == <span class="literal">NULL</span> || i+byte &gt;= (<span class="keyword">size_t</span>)<span class="built_in">strlen</span>) <span class="keyword">break</span>;</span><br><span class="line">                buf[i] = src[i+byte];</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">/* Now operate on the copied buffer which is guaranteed</span></span><br><span class="line"><span class="comment">             * to be zero-padded. */</span></span><br><span class="line">            <span class="keyword">if</span> (thisop-&gt;sign) &#123;</span><br><span class="line">                <span class="comment">// 有符号整数</span></span><br><span class="line">                <span class="keyword">int64_t</span> val = getSignedBitfield(buf,thisop-&gt;offset-(byte*<span class="number">8</span>),</span><br><span class="line">                                            thisop-&gt;bits);</span><br><span class="line">                addReplyLongLong(c,val);</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// 无符号整数</span></span><br><span class="line">                <span class="keyword">uint64_t</span> val = getUnsignedBitfield(buf,thisop-&gt;offset-(byte*<span class="number">8</span>),</span><br><span class="line">                                            thisop-&gt;bits);</span><br><span class="line">                addReplyLongLong(c,val);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (changes) &#123;</span><br><span class="line">        <span class="comment">// 如果值改变了，则发送消息</span></span><br><span class="line">        signalModifiedKey(c-&gt;db,c-&gt;argv[<span class="number">1</span>]);</span><br><span class="line">        notifyKeyspaceEvent(NOTIFY_STRING,<span class="string">"setbit"</span>,c-&gt;argv[<span class="number">1</span>],c-&gt;db-&gt;id);</span><br><span class="line">        server.dirty += changes;</span><br><span class="line">    &#125;</span><br><span class="line">    zfree(ops);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="SETRANGE命令"><a href="#SETRANGE命令" class="headerlink" title="SETRANGE命令"></a><code>SETRANGE</code>命令</h3><p>从偏移量 <code>offset</code> 开始， 用 <code>value</code> 参数覆写(overwrite)键 <code>key</code> 储存的字符串值。</p>
+<p>不存在的键 <code>key</code> 当作空白字符串处理。</p>
+<p><code>SETRANGE</code> 命令会确保字符串足够长以便将 <code>value</code> 设置到指定的偏移量上， 如果键 <code>key</code> 原来储存的字符串长度比偏移量小(比如字符串只有 5 个字符长，但你设置的 <code>offset</code> 是 10 )， 那么原字符和偏移量之间的空白将用零字节(zerobytes, <code>&quot;\x00&quot;</code> )进行填充。</p>
+<ul>
+<li><code>sflags</code>：<code>wm</code>，写命令，并且可能增加内存的使用。</li>
+</ul>
+<h4 id="命令形式-13"><a href="#命令形式-13" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SETRANGE key offset value</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-13"><a href="#内部实现函数-13" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">setrangeCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    robj *o;</span><br><span class="line">    <span class="keyword">long</span> offset;</span><br><span class="line">    sds value = c-&gt;argv[<span class="number">3</span>]-&gt;ptr;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取offset</span></span><br><span class="line">    <span class="keyword">if</span> (getLongFromObjectOrReply(c,c-&gt;argv[<span class="number">2</span>],&amp;offset,<span class="literal">NULL</span>) != C_OK)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// offset必须大于等于0</span></span><br><span class="line">    <span class="keyword">if</span> (offset &lt; <span class="number">0</span>) &#123;</span><br><span class="line">        addReplyError(c,<span class="string">"offset is out of range"</span>);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 在db中根据键寻找值</span></span><br><span class="line">    o = lookupKeyWrite(c-&gt;db,c-&gt;argv[<span class="number">1</span>]);</span><br><span class="line">    <span class="keyword">if</span> (o == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="comment">/* Return 0 when setting nothing on a non-existing string */</span></span><br><span class="line">        <span class="keyword">if</span> (sdslen(value) == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// 当键的值不存在，且value为空，则直接返回0</span></span><br><span class="line">            addReply(c,shared.czero);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Return when the resulting string exceeds allowed size */</span></span><br><span class="line">        <span class="comment">// 判断设置偏移后，总长度是否大于512MB（由于这个键不存在，所以这里的其实检查了offset的大小）</span></span><br><span class="line">        <span class="keyword">if</span> (checkStringLength(c,offset+sdslen(value)) != C_OK)</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 直接创建一个sds字符串，并加入db</span></span><br><span class="line">        o = createObject(OBJ_STRING,sdsnewlen(<span class="literal">NULL</span>, offset+sdslen(value)));</span><br><span class="line">        dbAdd(c-&gt;db,c-&gt;argv[<span class="number">1</span>],o);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">size_t</span> olen;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 检查值得蕾西，需要时string</span></span><br><span class="line">        <span class="comment">/* Key exists, check type */</span></span><br><span class="line">        <span class="keyword">if</span> (checkType(c,o,OBJ_STRING))</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Return existing string length when setting nothing */</span></span><br><span class="line">        olen = stringObjectLen(o);</span><br><span class="line">        <span class="keyword">if</span> (sdslen(value) == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// value为空，表示不设置值，直接返回</span></span><br><span class="line">            addReplyLongLong(c,olen);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Return when the resulting string exceeds allowed size */</span></span><br><span class="line">        <span class="comment">// 判断设置偏移后，总长度是否大于512MB</span></span><br><span class="line">        <span class="keyword">if</span> (checkStringLength(c,offset+sdslen(value)) != C_OK)</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* Create a copy when the object is shared or encoded. */</span></span><br><span class="line">        <span class="comment">// 保存值，dbUnshareStringValue()会处理redisObject的引用问题</span></span><br><span class="line">        o = dbUnshareStringValue(c-&gt;db,c-&gt;argv[<span class="number">1</span>],o);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sdslen(value) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// 发小键值变化的消息</span></span><br><span class="line">        o-&gt;ptr = sdsgrowzero(o-&gt;ptr,offset+sdslen(value));</span><br><span class="line">        <span class="built_in">memcpy</span>((<span class="keyword">char</span>*)o-&gt;ptr+offset,value,sdslen(value));</span><br><span class="line">        signalModifiedKey(c-&gt;db,c-&gt;argv[<span class="number">1</span>]);</span><br><span class="line">        notifyKeyspaceEvent(NOTIFY_STRING,</span><br><span class="line">            <span class="string">"setrange"</span>,c-&gt;argv[<span class="number">1</span>],c-&gt;db-&gt;id);</span><br><span class="line">        server.dirty++;</span><br><span class="line">    &#125;</span><br><span class="line">    addReplyLongLong(c,sdslen(o-&gt;ptr));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="GETRANGE命令"><a href="#GETRANGE命令" class="headerlink" title="GETRANGE命令"></a><code>GETRANGE</code>命令</h3><p>返回键 <code>key</code> 储存的字符串值的指定部分， 字符串的截取范围由 <code>start</code> 和 <code>end</code> 两个偏移量决定 (包括 <code>start</code> 和 <code>end</code> 在内)。</p>
+<p>负数偏移量表示从字符串的末尾开始计数， <code>-1</code> 表示最后一个字符， <code>-2</code> 表示倒数第二个字符， 以此类推。</p>
+<p><code>GETRANGE</code> 通过保证子字符串的值域(range)不超过实际字符串的值域来处理超出范围的值域请求。</p>
+<ul>
+<li><code>sflags</code>：<code>r</code>，只读命令。</li>
+</ul>
+<h4 id="命令形式-14"><a href="#命令形式-14" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GETRANGE key start end</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-14"><a href="#内部实现函数-14" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">getrangeCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    robj *o;</span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> start, end;</span><br><span class="line">    <span class="keyword">char</span> *str, llbuf[<span class="number">32</span>];</span><br><span class="line">    <span class="keyword">size_t</span> <span class="built_in">strlen</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从参数中获取 start</span></span><br><span class="line">    <span class="keyword">if</span> (getLongLongFromObjectOrReply(c,c-&gt;argv[<span class="number">2</span>],&amp;start,<span class="literal">NULL</span>) != C_OK)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    <span class="comment">// 从参数中获取 end</span></span><br><span class="line">    <span class="keyword">if</span> (getLongLongFromObjectOrReply(c,c-&gt;argv[<span class="number">3</span>],&amp;end,<span class="literal">NULL</span>) != C_OK)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    <span class="comment">// 根据 key 获取其值 o, 并检查数据类型是否为redis字符串类型</span></span><br><span class="line">    <span class="keyword">if</span> ((o = lookupKeyReadOrReply(c,c-&gt;argv[<span class="number">1</span>],shared.emptybulk)) == <span class="literal">NULL</span> ||</span><br><span class="line">        checkType(c,o,OBJ_STRING)) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果字符串中保存的是整型，则转成字符串形式</span></span><br><span class="line">    <span class="keyword">if</span> (o-&gt;encoding == OBJ_ENCODING_INT) &#123;</span><br><span class="line">        str = llbuf;</span><br><span class="line">        <span class="built_in">strlen</span> = ll2string(llbuf,<span class="keyword">sizeof</span>(llbuf),(<span class="keyword">long</span>)o-&gt;ptr);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        str = o-&gt;ptr;</span><br><span class="line">        <span class="built_in">strlen</span> = sdslen(str);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 对不正确的start，end进行处理</span></span><br><span class="line">    <span class="comment">/* Convert negative indexes */</span></span><br><span class="line">    <span class="keyword">if</span> (start &lt; <span class="number">0</span> &amp;&amp; end &lt; <span class="number">0</span> &amp;&amp; start &gt; end) &#123;</span><br><span class="line">        addReply(c,shared.emptybulk);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 对负数的（start, end）和越界的end进行处理</span></span><br><span class="line">    <span class="keyword">if</span> (start &lt; <span class="number">0</span>) start = <span class="built_in">strlen</span>+start;</span><br><span class="line">    <span class="keyword">if</span> (end &lt; <span class="number">0</span>) end = <span class="built_in">strlen</span>+end;</span><br><span class="line">    <span class="keyword">if</span> (start &lt; <span class="number">0</span>) start = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> (end &lt; <span class="number">0</span>) end = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> ((<span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span>)end &gt;= <span class="built_in">strlen</span>) end = <span class="built_in">strlen</span><span class="number">-1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Precondition: end &gt;= 0 &amp;&amp; end &lt; strlen, so the only condition where</span></span><br><span class="line"><span class="comment">     * nothing can be returned is: start &gt; end. */</span></span><br><span class="line">    <span class="keyword">if</span> (start &gt; end || <span class="built_in">strlen</span> == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// start &gt; end 的错误情况</span></span><br><span class="line">        <span class="comment">// strlen == 0 的情况（PS：为什么这里不提前判断？提前判断了就不用做start和end的运算了。不过可能考虑的是代码的可读性，毕竟start和end的运行应该也花不了多少时间）</span></span><br><span class="line">        addReply(c,shared.emptybulk);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        addReplyBulkCBuffer(c,(<span class="keyword">char</span>*)str+start,end-start+<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="SUBSTR命令"><a href="#SUBSTR命令" class="headerlink" title="SUBSTR命令"></a><code>SUBSTR</code>命令</h3><p>在Redis 2.0 之前，<code>SUBSTR</code>其实是<code>GETRANGE</code>。现在的实现也是一样的，所以参照<code>GETRANGE</code></p>
+<ul>
+<li><code>sflags</code>：<code>r</code>，只读命令。</li>
+</ul>
+<h3 id="INCR命令"><a href="#INCR命令" class="headerlink" title="INCR命令"></a><code>INCR</code>命令</h3><p>为键 <code>key</code> 储存的数字值加上<code>1</code>。</p>
+<p>如果键 <code>key</code> 不存在， 那么它的值会先被初始化为 <code>0</code> ， 然后再执行 <code>INCR</code> 命令。</p>
+<p>如果键 <code>key</code> 储存的值不能被解释为数字， 那么 <code>INCR</code> 命令将返回一个错误。</p>
+<p>本操作的值限制在 64 位(bit)有符号数字表示之内。</p>
+<ul>
+<li><code>sflags</code>：<code>wmF</code>，写命令，并可能导致增加内存的使用。快速执行，不应该被延迟。</li>
+</ul>
+<h4 id="命令形式-15"><a href="#命令形式-15" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">INCR key</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-15"><a href="#内部实现函数-15" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">incrCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 其实`INCR`,`INCRBY`,`DECR`,`DECRBY`都是调用的incrDecrCommand()函数</span></span><br><span class="line">    incrDecrCommand(c,<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">incrDecrCommand</span><span class="params">(client *c, <span class="keyword">long</span> <span class="keyword">long</span> incr)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">long</span> value, oldvalue;</span><br><span class="line">    robj *o, *<span class="keyword">new</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 查询键对应的值o</span></span><br><span class="line">    o = lookupKeyWrite(c-&gt;db,c-&gt;argv[<span class="number">1</span>]);</span><br><span class="line">    <span class="comment">// 检查值o的类型</span></span><br><span class="line">    <span class="keyword">if</span> (o != <span class="literal">NULL</span> &amp;&amp; checkType(c,o,OBJ_STRING)) <span class="keyword">return</span>;</span><br><span class="line">    <span class="comment">// 从o中获取整数值value（可能是sds的）</span></span><br><span class="line">    <span class="keyword">if</span> (getLongLongFromObjectOrReply(c,o,&amp;value,<span class="literal">NULL</span>) != C_OK) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 判断相加后，是否会造成越界，不能超过LLONG_MIN，也不能小于LLONG_MAX</span></span><br><span class="line">    oldvalue = value;</span><br><span class="line">    <span class="keyword">if</span> ((incr &lt; <span class="number">0</span> &amp;&amp; oldvalue &lt; <span class="number">0</span> &amp;&amp; incr &lt; (LLONG_MIN-oldvalue)) ||</span><br><span class="line">        (incr &gt; <span class="number">0</span> &amp;&amp; oldvalue &gt; <span class="number">0</span> &amp;&amp; incr &gt; (LLONG_MAX-oldvalue))) &#123;</span><br><span class="line">        addReplyError(c,<span class="string">"increment or decrement would overflow"</span>);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    value += incr;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (o &amp;&amp; o-&gt;refcount == <span class="number">1</span> &amp;&amp; o-&gt;encoding == OBJ_ENCODING_INT &amp;&amp;</span><br><span class="line">        (value &lt; <span class="number">0</span> || value &gt;= OBJ_SHARED_INTEGERS) &amp;&amp;</span><br><span class="line">        value &gt;= LONG_MIN &amp;&amp; value &lt;= LONG_MAX)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 这是判断 值 o 是存在的，而且不在 OBJ_SHARED_INTEGERS （Redis初始化的共享整数）范围内</span></span><br><span class="line">        <span class="comment">// 而且没有其他键引用到o（o-&gt;refcount == 1）</span></span><br><span class="line">        <span class="comment">// 所以可以直接修改o中的值</span></span><br><span class="line">        <span class="keyword">new</span> = o;</span><br><span class="line">        o-&gt;ptr = (<span class="keyword">void</span>*)((<span class="keyword">long</span>)value);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// createStringObjectFromLongLong() 会判断值value是否在 OBJ_SHARED_INTEGERS 的范围内</span></span><br><span class="line">        <span class="comment">// 如果在范围内，则直接引用共享的整数对象</span></span><br><span class="line">        <span class="comment">// 如果不是，则创建新的对象</span></span><br><span class="line">        <span class="keyword">new</span> = createStringObjectFromLongLong(value);</span><br><span class="line">        <span class="keyword">if</span> (o) &#123;</span><br><span class="line">            <span class="comment">// 原本键值对已经存在，则覆盖</span></span><br><span class="line">            dbOverwrite(c-&gt;db,c-&gt;argv[<span class="number">1</span>],<span class="keyword">new</span>);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 原本键值不存在，则添加</span></span><br><span class="line">            dbAdd(c-&gt;db,c-&gt;argv[<span class="number">1</span>],<span class="keyword">new</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 发送消息</span></span><br><span class="line">    signalModifiedKey(c-&gt;db,c-&gt;argv[<span class="number">1</span>]);</span><br><span class="line">    notifyKeyspaceEvent(NOTIFY_STRING,<span class="string">"incrby"</span>,c-&gt;argv[<span class="number">1</span>],c-&gt;db-&gt;id);</span><br><span class="line">    server.dirty++;</span><br><span class="line">    addReply(c,shared.colon);</span><br><span class="line">    addReply(c,<span class="keyword">new</span>);</span><br><span class="line">    addReply(c,shared.crlf);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="DECR命令"><a href="#DECR命令" class="headerlink" title="DECR命令"></a><code>DECR</code>命令</h3><p>为键 <code>key</code> 储存的数字值减去<code>1</code>。</p>
+<p>如果键 <code>key</code> 不存在， 那么键 <code>key</code> 的值会先被初始化为 <code>0</code> ， 然后再执行 <code>DECR</code> 操作。</p>
+<p>如果键 <code>key</code> 储存的值不能被解释为数字， 那么 <code>DECR</code> 命令将返回一个错误。</p>
+<p>本操作的值限制在 64 位(bit)有符号数字表示之内。</p>
+<ul>
+<li><code>sflags</code>：<code>wmF</code>，写命令，并可能导致增加内存的使用。快速执行，不应该被延迟。</li>
+</ul>
+<h4 id="命令形式-16"><a href="#命令形式-16" class="headerlink" title="命令形式"></a>命令形式</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">DECR key</span><br></pre></td></tr></table></figure>
+<h4 id="内部实现函数-16"><a href="#内部实现函数-16" class="headerlink" title="内部实现函数"></a>内部实现函数</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// t_string.c</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">decrCommand</span><span class="params">(client *c)</span> </span>&#123;</span><br><span class="line">    incrDecrCommand(c,<span class="number">-1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>incrDecrCommand()</code>的解析参照<code>INCR</code>。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/02/12/《编程珠玑》读后感/" rel="next" title="《编程珠玑》读书笔记">
+                <i class="fa fa-chevron-left"></i> 《编程珠玑》读书笔记
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpeg" alt="Ming">
+            
+              <p class="site-author-name" itemprop="name">Ming</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/mingforpc" title="GitHub &rarr; https://github.com/mingforpc" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianmingforpc@gmail.com" title="E-Mail &rarr; mailto:jianmingforpc@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#redisCommand结构体"><span class="nav-number">1.</span> <span class="nav-text">redisCommand结构体</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#命令的执行"><span class="nav-number">2.</span> <span class="nav-text">命令的执行</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#MODULE模块化命令"><span class="nav-number">2.1.</span> <span class="nav-text">MODULE模块化命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式"><span class="nav-number">2.1.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数"><span class="nav-number">2.1.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GET命令"><span class="nav-number">2.2.</span> <span class="nav-text">GET命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-1"><span class="nav-number">2.2.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-1"><span class="nav-number">2.2.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SET命令"><span class="nav-number">2.3.</span> <span class="nav-text">SET命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-2"><span class="nav-number">2.3.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-2"><span class="nav-number">2.3.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SETNX命令"><span class="nav-number">2.4.</span> <span class="nav-text">SETNX命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-3"><span class="nav-number">2.4.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-3"><span class="nav-number">2.4.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SETEX命令"><span class="nav-number">2.5.</span> <span class="nav-text">SETEX命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-4"><span class="nav-number">2.5.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-4"><span class="nav-number">2.5.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PSETEX命令"><span class="nav-number">2.6.</span> <span class="nav-text">PSETEX命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-5"><span class="nav-number">2.6.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-5"><span class="nav-number">2.6.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#APPEND命令"><span class="nav-number">2.7.</span> <span class="nav-text">APPEND命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-6"><span class="nav-number">2.7.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-6"><span class="nav-number">2.7.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#STRLEN命令"><span class="nav-number">2.8.</span> <span class="nav-text">STRLEN命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-7"><span class="nav-number">2.8.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-7"><span class="nav-number">2.8.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DEL命令"><span class="nav-number">2.9.</span> <span class="nav-text">DEL命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-8"><span class="nav-number">2.9.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-8"><span class="nav-number">2.9.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#EXISTS命令"><span class="nav-number">2.10.</span> <span class="nav-text">EXISTS命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-9"><span class="nav-number">2.10.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-9"><span class="nav-number">2.10.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SETBIT命令"><span class="nav-number">2.11.</span> <span class="nav-text">SETBIT命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-10"><span class="nav-number">2.11.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-10"><span class="nav-number">2.11.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GETBIT命令"><span class="nav-number">2.12.</span> <span class="nav-text">GETBIT命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-11"><span class="nav-number">2.12.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-11"><span class="nav-number">2.12.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BITFIELD命令"><span class="nav-number">2.13.</span> <span class="nav-text">BITFIELD命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-12"><span class="nav-number">2.13.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-12"><span class="nav-number">2.13.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SETRANGE命令"><span class="nav-number">2.14.</span> <span class="nav-text">SETRANGE命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-13"><span class="nav-number">2.14.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-13"><span class="nav-number">2.14.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GETRANGE命令"><span class="nav-number">2.15.</span> <span class="nav-text">GETRANGE命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-14"><span class="nav-number">2.15.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-14"><span class="nav-number">2.15.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SUBSTR命令"><span class="nav-number">2.16.</span> <span class="nav-text">SUBSTR命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#INCR命令"><span class="nav-number">2.17.</span> <span class="nav-text">INCR命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-15"><span class="nav-number">2.17.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-15"><span class="nav-number">2.17.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DECR命令"><span class="nav-number">2.18.</span> <span class="nav-text">DECR命令</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#命令形式-16"><span class="nav-number">2.18.1.</span> <span class="nav-text">命令形式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内部实现函数-16"><span class="nav-number">2.18.2.</span> <span class="nav-text">内部实现函数</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ming</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.6.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+  
+  <script type="text/javascript" color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.6.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.6.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.6.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.6.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
