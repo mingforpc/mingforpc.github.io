@@ -109,20 +109,24 @@
 
 
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Ming Blog">
-<meta property="og:url" content="http://yoursite.com/archives/2018/03/index.html">
+  <meta name="description" content="前两天正在写一个类似与抢购的功能，决定使用Redis来存储一些信息。又因为有一个刷新的周期，为了保证操作的原子性，最后觉得使用在Redis中调用Lua脚本实现。 但是在实现的过程中，总觉得如果在Lua脚本内，获取了KeyA,那么KeyA如果在脚本执行的过程中过期了怎么办？Redis有做这个保证吗？当时问了劲哥，虽然劲哥说Redis会保证这个的原子性，但总觉得不搞清楚不安心，所以就查了查源码。 在R">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis的Lua脚本是如何保证原子性的">
+<meta property="og:url" content="http://yoursite.com/2019/07/14/Redis的Lua脚本是如何保证原子性的/index.html">
 <meta property="og:site_name" content="Ming Blog">
+<meta property="og:description" content="前两天正在写一个类似与抢购的功能，决定使用Redis来存储一些信息。又因为有一个刷新的周期，为了保证操作的原子性，最后觉得使用在Redis中调用Lua脚本实现。 但是在实现的过程中，总觉得如果在Lua脚本内，获取了KeyA,那么KeyA如果在脚本执行的过程中过期了怎么办？Redis有做这个保证吗？当时问了劲哥，虽然劲哥说Redis会保证这个的原子性，但总觉得不搞清楚不安心，所以就查了查源码。 在R">
 <meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-14T14:41:58.036Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Ming Blog">
+<meta name="twitter:title" content="Redis的Lua脚本是如何保证原子性的">
+<meta name="twitter:description" content="前两天正在写一个类似与抢购的功能，决定使用Redis来存储一些信息。又因为有一个刷新的周期，为了保证操作的原子性，最后觉得使用在Redis中调用Lua脚本实现。 但是在实现的过程中，总觉得如果在Lua脚本内，获取了KeyA,那么KeyA如果在脚本执行的过程中过期了怎么办？Redis有做这个保证吗？当时问了劲哥，虽然劲哥说Redis会保证这个的原子性，但总觉得不搞清楚不安心，所以就查了查源码。 在R">
 
 
 
 
 
 
-  <link rel="canonical" href="http://yoursite.com/archives/2018/03/">
+  <link rel="canonical" href="http://yoursite.com/2019/07/14/Redis的Lua脚本是如何保证原子性的/">
 
 
 
@@ -132,7 +136,7 @@
   };
 </script>
 
-  <title>归档 | Ming Blog</title>
+  <title>Redis的Lua脚本是如何保证原子性的 | Ming Blog</title>
   
 
 
@@ -181,7 +185,7 @@
     
   
 
-  <div class="container sidebar-position-left page-archive">
+  <div class="container sidebar-position-left page-post-detail">
     <div class="headband"></div>
 
     <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
@@ -273,7 +277,7 @@
         
         
           
-          <li class="menu-item menu-item-archives menu-item-active">
+          <li class="menu-item menu-item-archives">
 
     
     
@@ -315,100 +319,192 @@
           
             
 
-    
-    
-      
-      
-    
-      
-      
-    
-      
-      
-    
-      
-      
-    
-    
-
-  
-
-
           
           <div id="content" class="content">
             
 
+  <div id="posts" class="posts-expand">
+    
+
+  
+
   
   
   
-  <div class="post-block archive">
-    <div id="posts" class="posts-collapse">
-      <span class="archive-move-on"></span>
 
-      
-      <span class="archive-page-counter">
-        
-        
-         
-          
-        不错! 目前共计 62 篇日志。 继续努力。
-      </span>
-      
-
-      
-
-        
-        
-        
-
-        
-          
-          <div class="collection-title">
-            <h1 class="archive-year" id="archive-year-2018">2018</h1>
-          </div>
-        
-        
-
-        
+  
 
   <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
-    <header class="post-header">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/07/14/Redis的Lua脚本是如何保证原子性的/">
 
-      <h2 class="post-title">
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ming">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ming Blog">
+    </span>
+
+    
+      <header class="post-header">
+
         
-            <a class="post-title-link" href="/2018/03/12/Ngrok穿透原理/" itemprop="url">
-              
-                <span itemprop="name">Ngrok穿透原理</span>
-              
-            </a>
         
-      </h2>
+          <h1 class="post-title" itemprop="name headline">Redis的Lua脚本是如何保证原子性的
+              
+            
+          </h1>
+        
 
-      <div class="post-meta">
-        <time class="post-time" itemprop="dateCreated" datetime="2018-03-12T11:10:00+08:00" content="2018-03-12">
-          03-12
-        </time>
-      </div>
+        <div class="post-meta">
+          <span class="post-time">
 
-    </header>
-  </article>
+            
+            
+            
 
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
 
+              
+                
+              
+
+              <time title="创建时间：2019-07-14 22:24:30 / 修改时间：22:41:58" itemprop="dateCreated datePublished" datetime="2019-07-14T22:24:30+08:00">2019-07-14</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/Redis/" itemprop="url" rel="index"><span itemprop="name">Redis</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
 
       
+      
 
+      
+        <p>前两天正在写一个类似与抢购的功能，决定使用Redis来存储一些信息。又因为有一个刷新的周期，为了保证操作的原子性，最后觉得使用在Redis中调用<code>Lua</code>脚本实现。</p>
+<p>但是在实现的过程中，总觉得如果在<code>Lua</code>脚本内，获取了Key<code>A</code>,那么Key<code>A</code>如果在脚本执行的过程中过期了怎么办？Redis有做这个保证吗？当时问了劲哥，虽然劲哥说Redis会保证这个的原子性，<br>但总觉得不搞清楚不安心，所以就查了查源码。</p>
+<p>在Redis中，大部分操作都会调用<code>expireIfNeeded(redisDb *db, robj *key)</code>来判断键是否已经过期。然而这段代码中有如下一段：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// db.c</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">expireIfNeeded</span><span class="params">(redisDb *db, robj *key)</span> </span>&#123;</span><br><span class="line">  ......</span><br><span class="line"></span><br><span class="line">  <span class="comment">/* If we are in the context of a Lua script, we pretend that time is</span></span><br><span class="line"><span class="comment">     * blocked to when the Lua script started. This way a key can expire</span></span><br><span class="line"><span class="comment">     * only the first time it is accessed and not in the middle of the</span></span><br><span class="line"><span class="comment">     * script execution, making propagation to slaves / AOF consistent.</span></span><br><span class="line"><span class="comment">     * See issue #1525 on Github for more information. */</span></span><br><span class="line">  now = server.lua_caller ? server.lua_time_start : mstime();</span><br><span class="line"></span><br><span class="line">  ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这段代码的意思很明显，当进入<code>lua</code>脚本后，所有的键过期时间，都会使用进入脚本瞬间的时间来判断，那么就不会存在我所担心，键在脚本执行的途中过期了。</p>
+
+      
     </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/05/26/Redis源码阅读笔记-各命令的执行/" rel="next" title="Redis源码阅读笔记-各命令的执行(编写中)">
+                <i class="fa fa-chevron-left"></i> Redis源码阅读笔记-各命令的执行(编写中)
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
   </div>
   
   
   
+  </article>
 
-  
 
+  </div>
 
 
           </div>
           
+
+  
+
+
 
         </div>
         
@@ -626,6 +722,10 @@
 
 
   
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.6.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.6.0"></script>
+
+
 
   
 
